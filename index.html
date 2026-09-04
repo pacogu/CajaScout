@@ -399,7 +399,25 @@
     closureForm: { vendor: 'all', from: todayKey(), to: todayKey(), startingFund: '', cashCount: {} }
   };
 
-  function render() { App.innerHTML = renderApp(); bindEvents(); }
+  function render() {
+    var active = document.activeElement;
+    var activeId = (active && active.id) ? active.id : null;
+    var selStart = null, selEnd = null;
+    if (activeId && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) {
+      try { selStart = active.selectionStart; selEnd = active.selectionEnd; } catch (e) {}
+    }
+    App.innerHTML = renderApp();
+    bindEvents();
+    if (activeId) {
+      var el = document.getElementById(activeId);
+      if (el) {
+        el.focus();
+        if (selStart != null && el.setSelectionRange) {
+          try { el.setSelectionRange(selStart, selEnd); } catch (e) {}
+        }
+      }
+    }
+  }
 
   // ---------------- db wiring ----------------
   function connectDb() {
@@ -1263,11 +1281,9 @@
   }
 
   window.addEventListener('beforeunload', function (e) {
-    if (cartItems().length > 0) {
-      e.preventDefault();
-      e.returnValue = '';
-      return '';
-    }
+    e.preventDefault();
+    e.returnValue = '';
+    return '';
   });
 
   var App = document.getElementById('app');
