@@ -331,6 +331,22 @@
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
 
+<!-- ============================================================
+     CONFIGURACION DE EMAILJS (envío automático de correo)
+     Reemplaza los TODO de abajo con tus datos de emailjs.com
+     (ver el README para los pasos). Si los dejas como están,
+     el botón "Enviar por correo" abrirá tu app de correo normal
+     en vez de enviarlo automáticamente.
+     ============================================================ -->
+<script>
+  var emailjsConfig = {
+    publicKey: "TODO-PEGA-TU-PUBLIC-KEY",
+    serviceId: "TODO-PEGA-TU-SERVICE-ID",
+    templateId: "TODO-PEGA-TU-TEMPLATE-ID"
+  };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+
 <script>
 (function () {
   "use strict";
@@ -384,6 +400,7 @@
     cart: {},
     vendorName: lsGet('scoutcaja_vendor', ''),
     payMethod: 'efectivo',
+    cashReceived: '',
     note: '',
     lastSale: null,
     lastSaleTotal: 0,
@@ -497,7 +514,13 @@
   function cartTotal() { return cartItems().reduce(function (s, i) { return s + i.total; }, 0); }
 
   function setVendor(v) { state.vendorName = v; lsSet('scoutcaja_vendor', v); }
-  function setPayMethod(m) { state.payMethod = m; render(); }
+  function setPayMethod(m) { state.payMethod = m; if (m !== 'efectivo') state.cashReceived = ''; render(); }
+  function setCashReceived(v) { state.cashReceived = v; render(); }
+  function cashChange() {
+    var received = parseInt(state.cashReceived, 10);
+    if (!isFinite(received)) return 0;
+    return received - cartTotal();
+  }
   function setNote(v) { state.note = v; }
   function setAutoPrint(v) { state.autoPrint = v; lsSet('scoutcaja_autoprint', v); render(); }
 
@@ -526,13 +549,19 @@
     state.formError = '';
     var now = new Date();
 
+    var total = cartTotal();
+    var cashReceived = state.payMethod === 'efectivo' && state.cashReceived !== '' ? (parseInt(state.cashReceived, 10) || 0) : null;
+    var change = cashReceived != null ? (cashReceived - total) : null;
+
     nextSaleNumber(function (saleNumber) {
       var sale = {
         saleNumber: saleNumber || null,
         vendorName: vendor,
         items: items,
-        total: cartTotal(),
+        total: total,
         paymentMethod: state.payMethod,
+        cashReceived: cashReceived,
+        change: change,
         note: (state.note || '').trim(),
         createdAt: now.toISOString(),
         dateKey: now.toLocaleDateString('en-CA')
@@ -543,6 +572,7 @@
         state.lastSaleTotal = sale.total;
         state.cart = {};
         state.note = '';
+        state.cashReceived = '';
         state.saleJustDone = true;
         applyStockDelta(items, -1);
         render();
@@ -676,8 +706,10 @@
       '<hr>' +
       '<table><tr><td><b>TOTAL</b></td><td class="num"><b>' + money(sale.total) + '</b></td></tr></table>' +
       '<div>Método de pago: ' + (sale.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia') + '</div>' +
+      (sale.cashReceived != null ? ('<table><tr><td>Paga con</td><td class="num">' + money(sale.cashReceived) + '</td></tr>' +
+        '<tr><td><b>Vuelto</b></td><td class="num"><b>' + money(sale.change) + '</b></td></tr></table>') : '') +
       '<hr>' +
-      '<div class="r-center">¡Gracias por apoyar a la tropa! ⛺</div>' +
+      '<div class="r-center">¡Gracias por apoyar al Grupo Scouts! ⛺</div>' +
       '</div>';
   }
 
@@ -817,24 +849,55 @@
     return lines.join('\n');
   }
 
-  function sendEmail(subject, body) {
+  var emailjsReady = false;
+  (function initEmailjs() {
+    if (window.emailjs && emailjsConfig && emailjsConfig.publicKey && emailjsConfig.publicKey.indexOf('TODO') !== 0) {
+      try { emailjs.init({ publicKey: emailjsConfig.publicKey }); emailjsReady = true; } catch (e) { console.error(e); }
+    }
+  })();
+
+  function sendEmail(subject, body, btnEl) {
     var to = (state.settings.notifyEmail || '').trim();
+
+    if (emailjsReady) {
+      var originalText = btnEl ? btnEl.textContent : null;
+      if (btnEl) { btnEl.disabled = true; btnEl.textContent = 'Enviando…'; }
+      emailjs.send(emailjsConfig.serviceId, emailjsConfig.templateId, {
+        to_email: to,
+        subject: subject,
+        message: body
+      }).then(function () {
+        alert('¡Correo enviado a ' + to + '!');
+        if (btnEl) { btnEl.disabled = false; btnEl.textContent = originalText; }
+      }).catch(function (err) {
+        console.error(err);
+        alert('No se pudo enviar el correo automáticamente. Se abrirá tu app de correo para enviarlo manualmente.');
+        if (btnEl) { btnEl.disabled = false; btnEl.textContent = originalText; }
+        openMailto(to, subject, body);
+      });
+      return;
+    }
+
+    openMailto(to, subject, body);
+  }
+
+  function openMailto(to, subject, body) {
     var url = 'mailto:' + encodeURIComponent(to) + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
     window.location.href = url;
   }
 
-  function emailReport() {
+  function emailReport(e) {
     var f = state.report;
     var sales = filteredSales(f);
     if (!(state.settings.notifyEmail || '').trim()) { alert('Primero ingresa un correo de destino en Configuración.'); return; }
-    sendEmail('Reporte de ventas — ' + state.settings.troopName, buildReportText(sales, f));
+    sendEmail('Reporte de ventas — ' + state.settings.troopName, buildReportText(sales, f), e && e.currentTarget);
   }
 
-  function emailClosure() {
+  function emailClosure(e) {
     if (!(state.settings.notifyEmail || '').trim()) { alert('Primero ingresa un correo de destino en Configuración.'); return; }
     var cc = state.closureForm.cashCount;
     var hasCount = cashCountPieces(cc) > 0;
-    sendEmail('Cierre de caja — ' + state.settings.troopName, buildClosureText(closureSales(), state.closureForm, hasCount ? cashCountTotal(cc) : null, cc, closureFund()));
+    sendEmail('Cierre de caja — ' + state.settings.troopName, buildClosureText(closureSales(), state.closureForm, hasCount ? cashCountTotal(cc) : null, cc, closureFund()), e && e.currentTarget);
   }
 
   function setPaperWidth(w) { state.paperWidth = w; lsSet('scoutcaja_paper', w); render(); }
@@ -926,6 +989,9 @@
         '<div class="card"><div class="sale-success">' +
         '<div class="big-check">✅</div><h2>Venta registrada</h2>' +
         '<p style="color:var(--ink-soft)">Total ' + money(state.lastSaleTotal) + '</p>' +
+        (state.lastSale && state.lastSale.cashReceived != null ? ('' +
+          '<p style="color:var(--ink-soft)">Pagó con ' + money(state.lastSale.cashReceived) + '</p>' +
+          '<p style="font-size:1.2rem"><b>Vuelto: ' + money(state.lastSale.change) + '</b></p>') : '') +
         '</div></div></div>' +
         '<div class="cart-panel"><div class="card">' +
         '<div class="card-title">Recibo</div>' +
@@ -986,6 +1052,16 @@
       '<button type="button" class="pill' + (state.payMethod === 'efectivo' ? ' active' : '') + '" data-pay="efectivo">💵 Efectivo</button>' +
       '<button type="button" class="pill' + (state.payMethod === 'transferencia' ? ' active' : '') + '" data-pay="transferencia">🏦 Transferencia</button>' +
       '</div></div>' +
+      (state.payMethod === 'efectivo' ? ('' +
+        '<div class="field" style="margin-bottom:0.75rem"><label>Paga con</label>' +
+        '<div class="money-input-wrap"><span class="money-prefix">$</span><input type="number" min="0" step="100" id="cash-received" placeholder="' + total + '" value="' + esc(state.cashReceived) + '"></div>' +
+        '</div>' +
+        (state.cashReceived !== '' ? ('' +
+          '<div class="cart-total-row" style="margin-top:-0.35rem;margin-bottom:0.75rem">' +
+          '<span>Vuelto</span>' +
+          '<span class="amt mono" style="color:' + (cashChange() < 0 ? 'var(--danger)' : 'var(--success)') + '">' + money(cashChange()) + '</span>' +
+          '</div>') : '')
+      ) : '') +
       '<div class="field" style="margin-bottom:0.75rem"><label>Nota (opcional)</label>' +
       '<input type="text" placeholder="Ej: comprador, dirección" data-bind-plain="note" value="' + esc(state.note) + '"></div>' +
       '<button class="btn btn-primary btn-block" data-action="register-sale">Registrar venta</button>' +
@@ -1183,7 +1259,11 @@
       '<div class="row">' +
       '<div class="field"><label>Correo de destino</label><input type="email" placeholder="correo@ejemplo.com" data-bind="settings.notifyEmail" value="' + esc(s.notifyEmail || '') + '"></div>' +
       '</div>' +
-      '<div style="font-size:0.78rem;color:var(--ink-faint);margin-top:0.6rem">Cada persona puede dejar aquí su propio correo: los botones "Enviar por correo" de Reportes y Cierre abrirán tu app de correo con el resumen listo para enviar a esa dirección.</div>' +
+      '<div style="font-size:0.78rem;color:var(--ink-faint);margin-top:0.6rem">' +
+      (emailjsReady ?
+        'Envío automático activado ✅: al presionar "Enviar por correo" se manda directo, sin pasos extra.' :
+        'Cada persona puede dejar aquí su propio correo. Por ahora, "Enviar por correo" abre tu app de correo para enviarlo tú manualmente (para que se envíe automático, hay que configurar EmailJS — ver el README).') +
+      '</div>' +
       '</div>';
   }
 
@@ -1213,6 +1293,8 @@
     App.querySelectorAll('[data-dec]').forEach(function (el) { el.addEventListener('click', function () { addQty(el.getAttribute('data-dec'), -1); }); });
     App.querySelectorAll('[data-remove]').forEach(function (el) { el.addEventListener('click', function () { delete state.cart[el.getAttribute('data-remove')]; render(); }); });
     App.querySelectorAll('[data-pay]').forEach(function (el) { el.addEventListener('click', function () { setPayMethod(el.getAttribute('data-pay')); }); });
+    var cashReceivedInput = document.getElementById('cash-received');
+    if (cashReceivedInput) cashReceivedInput.addEventListener('input', function (e) { setCashReceived(e.target.value); });
 
     var vendorInput = App.querySelector('[data-bind-plain="vendorName"]');
     if (vendorInput) vendorInput.addEventListener('input', function (e) { setVendor(e.target.value); });
