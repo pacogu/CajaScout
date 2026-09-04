@@ -332,6 +332,7 @@
   var DT = new Intl.DateTimeFormat('es-CL', { dateStyle: 'short', timeStyle: 'short' });
   function money(n) { return CLP.format(Math.round(n || 0)); }
   function fmtDate(iso) { try { return DT.format(new Date(iso)); } catch (e) { return iso; } }
+  function saleLabel(s) { return s.saleNumber ? ('#' + String(s.saleNumber).padStart(4, '0')) : ('#R-' + String(s.id).slice(-6).toUpperCase()); }
   function todayKey() { return new Date().toLocaleDateString('en-CA'); }
   function dateKey(iso) { try { return new Date(iso).toLocaleDateString('en-CA'); } catch (e) { return ''; } }
   function uid() { return Math.random().toString(36).slice(2, 9); }
@@ -475,6 +476,23 @@
   function setNote(v) { state.note = v; }
   function setAutoPrint(v) { state.autoPrint = v; lsSet('scoutcaja_autoprint', v); render(); }
 
+  function nextSaleNumber(cb) {
+    if (useDb) {
+      var counterRef = db.doc('counters/sales');
+      db.runTransaction(function (tx) {
+        return tx.get(counterRef).then(function (doc) {
+          var current = (doc.exists && doc.data().value) || 0;
+          var next = current + 1;
+          tx.set(counterRef, { value: next });
+          return next;
+        });
+      }).then(function (n) { cb(n); }).catch(function () { cb(null); });
+    } else {
+      state.localSaleCounter = (state.localSaleCounter || 0) + 1;
+      cb(state.localSaleCounter);
+    }
+  }
+
   function registerSale() {
     var items = cartItems();
     var vendor = (state.vendorName || '').trim();
@@ -482,35 +500,39 @@
     if (items.length === 0) { state.formError = 'Agrega al menos un producto.'; render(); return; }
     state.formError = '';
     var now = new Date();
-    var sale = {
-      vendorName: vendor,
-      items: items,
-      total: cartTotal(),
-      paymentMethod: state.payMethod,
-      note: (state.note || '').trim(),
-      createdAt: now.toISOString(),
-      dateKey: now.toLocaleDateString('en-CA')
-    };
 
-    function afterSaved(id) {
-      state.lastSale = Object.assign({ id: id }, sale);
-      state.lastSaleTotal = sale.total;
-      state.cart = {};
-      state.note = '';
-      state.saleJustDone = true;
-      applyStockDelta(items, -1);
-      render();
-      if (state.autoPrint) printReceipt();
-    }
+    nextSaleNumber(function (saleNumber) {
+      var sale = {
+        saleNumber: saleNumber || null,
+        vendorName: vendor,
+        items: items,
+        total: cartTotal(),
+        paymentMethod: state.payMethod,
+        note: (state.note || '').trim(),
+        createdAt: now.toISOString(),
+        dateKey: now.toLocaleDateString('en-CA')
+      };
 
-    if (useDb) {
-      db.collection('sales').add(sale).then(function (ref) { afterSaved(ref.id); })
-        .catch(function () { state.formError = 'No se pudo guardar la venta. Intenta de nuevo.'; render(); });
-    } else {
-      var id = 'local-' + uid();
-      state.sales.unshift(Object.assign({ id: id }, sale));
-      afterSaved(id);
-    }
+      function afterSaved(id) {
+        state.lastSale = Object.assign({ id: id }, sale);
+        state.lastSaleTotal = sale.total;
+        state.cart = {};
+        state.note = '';
+        state.saleJustDone = true;
+        applyStockDelta(items, -1);
+        render();
+        if (state.autoPrint) printReceipt();
+      }
+
+      if (useDb) {
+        db.collection('sales').add(sale).then(function (ref) { afterSaved(ref.id); })
+          .catch(function () { state.formError = 'No se pudo guardar la venta. Intenta de nuevo.'; render(); });
+      } else {
+        var id = 'local-' + uid();
+        state.sales.unshift(Object.assign({ id: id }, sale));
+        afterSaved(id);
+      }
+    });
   }
 
   // dir = -1 al vender (descuenta), +1 al anular una venta (repone)
@@ -620,7 +642,7 @@
       '<div class="r-center r-title">' + esc(state.settings.troopName) + '</div>' +
       '<div class="r-center">' + esc(state.settings.campaignName) + '</div>' +
       '<hr>' +
-      '<div>Recibo N° R-' + String(sale.id).slice(-6).toUpperCase() + '</div>' +
+      '<div>Recibo N° ' + (sale.saleNumber ? String(sale.saleNumber).padStart(4, '0') : ('R-' + String(sale.id).slice(-6).toUpperCase())) + '</div>' +
       '<div>Fecha: ' + fmtDate(sale.createdAt) + '</div>' +
       '<div>Vendedor(a): ' + esc(sale.vendorName) + '</div>' +
       (sale.note ? '<div>Nota: ' + esc(sale.note) + '</div>' : '') +
@@ -643,8 +665,8 @@
       '<tr><td colspan="3">Sin ventas en este período.</td></tr>';
     var txRows = sales.map(function (s) {
       var itemsSummary = s.items.map(function (it) { return it.qty + '× ' + it.name; }).join(', ');
-      return '<tr><td>' + fmtDate(s.createdAt) + '</td><td>' + esc(s.vendorName) + '</td><td>' + esc(itemsSummary) + '</td><td>' + (s.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia') + '</td><td class="num">' + money(s.total) + '</td></tr>';
-    }).join('') || '<tr><td colspan="5">Sin transacciones.</td></tr>';
+      return '<tr><td>' + saleLabel(s) + '</td><td>' + fmtDate(s.createdAt) + '</td><td>' + esc(s.vendorName) + '</td><td>' + esc(itemsSummary) + '</td><td>' + (s.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia') + '</td><td class="num">' + money(s.total) + '</td></tr>';
+    }).join('') || '<tr><td colspan="6">Sin transacciones.</td></tr>';
 
     return '' +
       '<div class="report-print">' +
@@ -658,7 +680,7 @@
       '<div class="rp-stat">Transferencia<b>' + money(st.byMethod.transferencia || 0) + '</b></div>' +
       '</div>' +
       '<table><thead><tr><th>Producto</th><th class="num">Cant.</th><th class="num">Total</th></tr></thead><tbody>' + prodRows + '</tbody></table>' +
-      '<table><thead><tr><th>Fecha</th><th>Vendedor(a)</th><th>Detalle</th><th>Método</th><th class="num">Total</th></tr></thead><tbody>' + txRows + '</tbody></table>' +
+      '<table><thead><tr><th>N°</th><th>Fecha</th><th>Vendedor(a)</th><th>Detalle</th><th>Método</th><th class="num">Total</th></tr></thead><tbody>' + txRows + '</tbody></table>' +
       '</div>';
   }
 
@@ -988,7 +1010,7 @@
 
     var txRows = sales.map(function (s) {
       var itemsSummary = s.items.map(function (it) { return it.qty + '× ' + it.name; }).join(', ');
-      return '<tr><td>' + fmtDate(s.createdAt) + '</td><td>' + esc(s.vendorName) + '</td><td>' + esc(itemsSummary) + '</td>' +
+      return '<tr><td class="mono">' + saleLabel(s) + '</td><td>' + fmtDate(s.createdAt) + '</td><td>' + esc(s.vendorName) + '</td><td>' + esc(itemsSummary) + '</td>' +
         '<td><span class="badge ' + (s.paymentMethod === 'efectivo' ? 'cash' : 'transfer') + '">' + (s.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia') + '</span></td>' +
         '<td class="num mono">' + money(s.total) + '</td>' +
         '<td style="white-space:nowrap">' +
@@ -997,7 +1019,7 @@
           '<span class="inline-confirm"><button class="btn btn-danger btn-sm" data-confirm-delsale="' + s.id + '">Anular</button><button class="btn btn-sm" data-cancel-del="1">No</button></span>' :
           '<button class="icon-btn" title="Anular venta" data-ask-delsale="' + s.id + '">✕</button>') +
         '</td></tr>';
-    }).join('') || '<tr><td colspan="6" class="empty-state">No hay transacciones en este período.</td></tr>';
+    }).join('') || '<tr><td colspan="7" class="empty-state">No hay transacciones en este período.</td></tr>';
 
     return '' +
       '<div class="card">' +
@@ -1026,7 +1048,7 @@
       '<div class="table-scroll"><table class="data-table"><thead><tr><th>Producto</th><th class="num">Cant.</th><th class="num">Total</th></tr></thead><tbody>' + prodRows + '</tbody></table></div></div>' +
 
       '<div class="card"><div class="card-title">Transacciones</div>' +
-      '<div class="table-scroll"><table class="data-table"><thead><tr><th>Fecha</th><th>Vendedor(a)</th><th>Detalle</th><th>Método</th><th class="num">Total</th><th></th></tr></thead><tbody>' + txRows + '</tbody></table></div></div>';
+      '<div class="table-scroll"><table class="data-table"><thead><tr><th>N°</th><th>Fecha</th><th>Vendedor(a)</th><th>Detalle</th><th>Método</th><th class="num">Total</th><th></th></tr></thead><tbody>' + txRows + '</tbody></table></div></div>';
   }
 
   function renderCierre() {
@@ -1229,6 +1251,14 @@
     var printClosureBtn = App.querySelector('[data-action="print-closure"]'); if (printClosureBtn) printClosureBtn.addEventListener('click', printClosure);
     var ecBtn = App.querySelector('[data-action="email-closure"]'); if (ecBtn) ecBtn.addEventListener('click', emailClosure);
   }
+
+  window.addEventListener('beforeunload', function (e) {
+    if (cartItems().length > 0) {
+      e.preventDefault();
+      e.returnValue = '';
+      return '';
+    }
+  });
 
   var App = document.getElementById('app');
   render();
