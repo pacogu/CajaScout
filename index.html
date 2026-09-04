@@ -332,20 +332,17 @@
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
 
 <!-- ============================================================
-     CONFIGURACION DE EMAILJS (envío automático de correo)
-     Reemplaza los TODO de abajo con tus datos de emailjs.com
-     (ver el README para los pasos). Si los dejas como están,
-     el botón "Enviar por correo" abrirá tu app de correo normal
-     en vez de enviarlo automáticamente.
+     CONFIGURACION DE ENVÍO DE CORREO (Google Apps Script + tu Gmail)
+     Reemplaza el TODO de abajo con la URL de tu Apps Script publicado
+     (ver el README para los pasos). Si lo dejas como está, el botón
+     "Enviar por correo" abrirá tu app de correo normal en vez de
+     enviarlo automáticamente.
      ============================================================ -->
 <script>
-  var emailjsConfig = {
-    publicKey: "TODO-PEGA-TU-PUBLIC-KEY",
-    serviceId: "TODO-PEGA-TU-SERVICE-ID",
-    templateId: "TODO-PEGA-TU-TEMPLATE-ID"
+  var appsScriptConfig = {
+    url: "TODO-PEGA-TU-URL-DE-APPS-SCRIPT"
   };
 </script>
-<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 
 <script>
 (function () {
@@ -849,31 +846,29 @@
     return lines.join('\n');
   }
 
-  var emailjsReady = false;
-  (function initEmailjs() {
-    if (window.emailjs && emailjsConfig && emailjsConfig.publicKey && emailjsConfig.publicKey.indexOf('TODO') !== 0) {
-      try { emailjs.init({ publicKey: emailjsConfig.publicKey }); emailjsReady = true; } catch (e) { console.error(e); }
-    }
-  })();
+  var appsScriptReady = !!(appsScriptConfig && appsScriptConfig.url && appsScriptConfig.url.indexOf('TODO') !== 0);
 
   function sendEmail(subject, body, btnEl) {
     var to = (state.settings.notifyEmail || '').trim();
 
-    if (emailjsReady) {
+    if (appsScriptReady) {
       var originalText = btnEl ? btnEl.textContent : null;
       if (btnEl) { btnEl.disabled = true; btnEl.textContent = 'Enviando…'; }
-      emailjs.send(emailjsConfig.serviceId, emailjsConfig.templateId, {
-        to_email: to,
-        subject: subject,
-        message: body
-      }).then(function () {
-        alert('¡Correo enviado a ' + to + '!');
+      fetch(appsScriptConfig.url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // evita el preflight CORS
+        body: JSON.stringify({ to: to, subject: subject, message: body })
+      }).then(function (res) { return res.json(); }).then(function (data) {
         if (btnEl) { btnEl.disabled = false; btnEl.textContent = originalText; }
+        if (data && data.ok) {
+          alert('¡Correo enviado a ' + to + ' desde tu Gmail!');
+        } else {
+          alert('Google respondió con un error al enviar: ' + (data && data.error ? data.error : 'desconocido'));
+        }
       }).catch(function (err) {
         console.error(err);
-        alert('No se pudo enviar el correo automáticamente. Se abrirá tu app de correo para enviarlo manualmente.');
         if (btnEl) { btnEl.disabled = false; btnEl.textContent = originalText; }
-        openMailto(to, subject, body);
+        alert('No se pudo confirmar el envío (puede ser un tema de conexión). Revisa la carpeta "Enviados" de tu Gmail para confirmar si salió.');
       });
       return;
     }
@@ -1260,9 +1255,9 @@
       '<div class="field"><label>Correo de destino</label><input type="email" placeholder="correo@ejemplo.com" data-bind="settings.notifyEmail" value="' + esc(s.notifyEmail || '') + '"></div>' +
       '</div>' +
       '<div style="font-size:0.78rem;color:var(--ink-faint);margin-top:0.6rem">' +
-      (emailjsReady ?
-        'Envío automático activado ✅: al presionar "Enviar por correo" se manda directo, sin pasos extra.' :
-        'Cada persona puede dejar aquí su propio correo. Por ahora, "Enviar por correo" abre tu app de correo para enviarlo tú manualmente (para que se envíe automático, hay que configurar EmailJS — ver el README).') +
+      (appsScriptReady ?
+        'Envío automático activado ✅: al presionar "Enviar por correo" se manda directo desde tu Gmail, sin pasos extra.' :
+        'Cada persona puede dejar aquí su propio correo. Por ahora, "Enviar por correo" abre tu app de correo para enviarlo tú manualmente (para que se envíe automático desde tu Gmail, hay que conectar un Google Apps Script — ver el README).') +
       '</div>' +
       '</div>';
   }
