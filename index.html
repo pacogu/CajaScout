@@ -371,7 +371,7 @@
     products: seedProducts.slice(),
     sales: [],
     closures: [],
-    settings: { troopName: 'Mi Tropa Scout', campaignName: 'Campaña de Ventas 2026', notifyEmail: '', deletePin: '' },
+    settings: { troopName: 'Mi Tropa Scout', campaignName: 'Campaña de Ventas 2026', notifyEmail: '' },
     synced: false,
     tab: lsGet('scoutcaja_tab', 'vender'),
     cart: {},
@@ -549,18 +549,11 @@
   function newSale() { state.saleJustDone = false; state.lastSale = null; render(); }
 
   function deleteSale(id) {
-    var pin = (state.settings.deletePin || '').trim();
-    if (pin) {
-      var entered = window.prompt('Ingresa la clave para anular esta venta:');
-      if (entered == null) { return; }
-      if (entered.trim() !== pin) { alert('Clave incorrecta. La venta no fue anulada.'); return; }
-    }
     var s = state.sales.find(function (x) { return x.id === id; });
     if (s) applyStockDelta(s.items, 1);
     if (useDb) { db.doc('sales/' + id).delete(); }
     else { state.sales = state.sales.filter(function (x) { return x.id !== id; }); render(); }
     state.confirmDeleteId = null;
-    render();
   }
 
   function saveSettings(field, value) {
@@ -1163,17 +1156,6 @@
       '<div class="field"><label>Correo de destino</label><input type="email" placeholder="correo@ejemplo.com" data-bind="settings.notifyEmail" value="' + esc(s.notifyEmail || '') + '"></div>' +
       '</div>' +
       '<div style="font-size:0.78rem;color:var(--ink-faint);margin-top:0.6rem">Cada persona puede dejar aquí su propio correo: los botones "Enviar por correo" de Reportes y Cierre abrirán tu app de correo con el resumen listo para enviar a esa dirección.</div>' +
-      '</div>' +
-
-      '<div class="card">' +
-      '<div class="card-title">Seguridad</div>' +
-      '<div class="row">' +
-      '<div class="field"><label>Clave para anular ventas</label><input type="text" placeholder="Ej: 1234" data-bind="settings.deletePin" value="' + esc(s.deletePin || '') + '"></div>' +
-      '</div>' +
-      '<div style="font-size:0.78rem;color:var(--ink-faint);margin-top:0.6rem">' +
-      (s.deletePin ? 'Activada: se pedirá esta clave antes de anular cualquier venta en Reportes. Compártela solo con quien deba poder anular ventas.' :
-        'Sin clave configurada, cualquier persona puede anular ventas desde Reportes sin restricción. Escribe una clave aquí para protegerlo.') +
-      '</div>' +
       '</div>';
   }
 
