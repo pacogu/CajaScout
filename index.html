@@ -1049,7 +1049,7 @@
       '</div></div>' +
       (state.payMethod === 'efectivo' ? ('' +
         '<div class="field" style="margin-bottom:0.75rem"><label>Paga con</label>' +
-        '<div class="money-input-wrap"><span class="money-prefix">$</span><input type="number" min="0" step="100" id="cash-received" placeholder="' + total + '" value="' + esc(state.cashReceived) + '"></div>' +
+        '<div class="money-input-wrap"><span class="money-prefix">$</span><input type="text" inputmode="numeric" pattern="[0-9]*" id="cash-received" placeholder="' + total + '" value="' + esc(state.cashReceived) + '"></div>' +
         '</div>' +
         (state.cashReceived !== '' ? ('' +
           '<div class="cart-total-row" style="margin-top:-0.35rem;margin-bottom:0.75rem">' +
@@ -1289,7 +1289,11 @@
     App.querySelectorAll('[data-remove]').forEach(function (el) { el.addEventListener('click', function () { delete state.cart[el.getAttribute('data-remove')]; render(); }); });
     App.querySelectorAll('[data-pay]').forEach(function (el) { el.addEventListener('click', function () { setPayMethod(el.getAttribute('data-pay')); }); });
     var cashReceivedInput = document.getElementById('cash-received');
-    if (cashReceivedInput) cashReceivedInput.addEventListener('input', function (e) { setCashReceived(e.target.value); });
+    if (cashReceivedInput) cashReceivedInput.addEventListener('input', function (e) {
+      var digits = e.target.value.replace(/[^0-9]/g, '');
+      if (digits !== e.target.value) e.target.value = digits;
+      setCashReceived(digits);
+    });
 
     var vendorInput = App.querySelector('[data-bind-plain="vendorName"]');
     if (vendorInput) vendorInput.addEventListener('input', function (e) { setVendor(e.target.value); });
