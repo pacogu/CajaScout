@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Caja Scout</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MiA1MiI+CjxjaXJjbGUgY3g9IjI2IiBjeT0iMjYiIHI9IjI0IiBmaWxsPSIjMmY0YTNjIiBzdHJva2U9IiNhODc5MWYiIHN0cm9rZS13aWR0aD0iMyIvPgo8ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSgyNiwyNikiPgo8cG9seWdvbiBwb2ludHM9IjAsLTE1IDQsLTMgMTUsMCA0LDMgMCwxNSAtNCwzIC0xNSwwIC00LC0zIiBmaWxsPSIjYTg3OTFmIi8+CjxjaXJjbGUgcj0iNC41IiBmaWxsPSIjMmY0YTNjIiBzdHJva2U9IiNhODc5MWYiIHN0cm9rZS13aWR0aD0iMS41Ii8+CjwvZz4KPC9zdmc+">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2f4a3c">
+<link rel="apple-touch-icon" href="icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fjalla+One&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -398,6 +401,10 @@
     vendorName: lsGet('scoutcaja_vendor', ''),
     payMethod: 'efectivo',
     cashReceived: '',
+    canInstall: false,
+    isIOS: /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream,
+    isStandalone: (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true,
+    settingsSaveMsg: '',
     note: '',
     lastSale: null,
     lastSaleTotal: 0,
@@ -1259,6 +1266,21 @@
         'Envío automático activado ✅: al presionar "Enviar por correo" se manda directo desde tu Gmail, sin pasos extra.' :
         'Cada persona puede dejar aquí su propio correo. Por ahora, "Enviar por correo" abre tu app de correo para enviarlo tú manualmente (para que se envíe automático desde tu Gmail, hay que conectar un Google Apps Script — ver el README).') +
       '</div>' +
+      '</div>' +
+
+      '<div class="card">' +
+      '<div class="card-title">Guardar y app</div>' +
+      '<div class="row" style="align-items:center">' +
+      '<button class="btn btn-primary" data-action="save-config">💾 Guardar cambios</button>' +
+      (state.isStandalone ? '' :
+        '<button class="btn btn-brass" data-action="install-app">📲 Instalar app</button>') +
+      '</div>' +
+      (state.settingsSaveMsg ? '<div style="font-size:0.82rem;color:var(--success);margin-top:0.6rem">' + esc(state.settingsSaveMsg) + '</div>' : '') +
+      '<div style="font-size:0.78rem;color:var(--ink-faint);margin-top:0.6rem">' +
+      (state.isStandalone ?
+        'Ya tienes la app instalada en este dispositivo ✅' :
+        'Instálala en tu celular o computador para abrirla como una app normal, con su propio ícono, sin tener que buscar el link cada vez.') +
+      '</div>' +
       '</div>';
   }
 
@@ -1359,6 +1381,8 @@
     var saveClosureBtn = App.querySelector('[data-action="save-closure"]'); if (saveClosureBtn) saveClosureBtn.addEventListener('click', saveClosure);
     var printClosureBtn = App.querySelector('[data-action="print-closure"]'); if (printClosureBtn) printClosureBtn.addEventListener('click', printClosure);
     var ecBtn = App.querySelector('[data-action="email-closure"]'); if (ecBtn) ecBtn.addEventListener('click', emailClosure);
+    var saveConfigBtn = App.querySelector('[data-action="save-config"]'); if (saveConfigBtn) saveConfigBtn.addEventListener('click', saveAllSettings);
+    var installBtn = App.querySelector('[data-action="install-app"]'); if (installBtn) installBtn.addEventListener('click', installApp);
   }
 
   window.addEventListener('beforeunload', function (e) {
@@ -1366,6 +1390,61 @@
     e.returnValue = '';
     return '';
   });
+
+  // ---------------- instalar como app (PWA) ----------------
+  var deferredInstallPrompt = null;
+  window.addEventListener('beforeinstallprompt', function (e) {
+    e.preventDefault();
+    deferredInstallPrompt = e;
+    state.canInstall = true;
+    render();
+  });
+  window.addEventListener('appinstalled', function () {
+    deferredInstallPrompt = null;
+    state.canInstall = false;
+    render();
+  });
+
+  function installApp() {
+    if (deferredInstallPrompt) {
+      deferredInstallPrompt.prompt();
+      deferredInstallPrompt.userChoice.then(function () {
+        deferredInstallPrompt = null;
+        state.canInstall = false;
+        render();
+      });
+      return;
+    }
+    if (state.isIOS) {
+      alert('Para instalar en iPhone/iPad: toca el botón Compartir (el cuadrado con la flecha hacia arriba) en Safari, y elige "Agregar a pantalla de inicio".');
+    } else {
+      alert('Tu navegador todavía no ofrece instalar la app (puede que ya esté instalada, o que este navegador no lo soporte). Prueba desde el menú (⋮) del navegador, buscando "Instalar app" o "Agregar a pantalla de inicio".');
+    }
+  }
+
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('sw.js').catch(function (err) { console.error('No se pudo registrar el service worker', err); });
+    });
+  }
+
+  // ---------------- guardar configuración ----------------
+  function saveAllSettings() {
+    if (useDb) {
+      db.doc('settings/config').set(state.settings).then(function () {
+        state.settingsSaveMsg = 'Guardado ✅';
+        render();
+        setTimeout(function () { state.settingsSaveMsg = ''; render(); }, 2500);
+      }).catch(function () {
+        state.settingsSaveMsg = 'No se pudo guardar. Revisa tu conexión.';
+        render();
+      });
+    } else {
+      state.settingsSaveMsg = 'Guardado localmente (sin Firebase conectado).';
+      render();
+      setTimeout(function () { state.settingsSaveMsg = ''; render(); }, 2500);
+    }
+  }
 
   var App = document.getElementById('app');
   render();
