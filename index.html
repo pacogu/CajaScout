@@ -1,0 +1,1672 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Caja Scout</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MiA1MiI+CjxjaXJjbGUgY3g9IjI2IiBjeT0iMjYiIHI9IjI0IiBmaWxsPSIjMmY0YTNjIiBzdHJva2U9IiNhODc5MWYiIHN0cm9rZS13aWR0aD0iMyIvPgo8ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSgyNiwyNikiPgo8cG9seWdvbiBwb2ludHM9IjAsLTE1IDQsLTMgMTUsMCA0LDMgMCwxNSAtNCwzIC0xNSwwIC00LC0zIiBmaWxsPSIjYTg3OTFmIi8+CjxjaXJjbGUgcj0iNC41IiBmaWxsPSIjMmY0YTNjIiBzdHJva2U9IiNhODc5MWYiIHN0cm9rZS13aWR0aD0iMS41Ii8+CjwvZz4KPC9zdmc+">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2f4a3c">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fjalla+One&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f1efe2;
+    --surface: #ffffff;
+    --surface-2: #fbf9ee;
+    --border: #dad4bd;
+    --border-soft: #e7e2cf;
+    --ink: #262a1e;
+    --ink-soft: #5c604c;
+    --ink-faint: #8b8f77;
+    --forest: #2f4a3c;
+    --forest-hover: #253c31;
+    --forest-ink: #eaf1ec;
+    --moss: #6b8566;
+    --moss-tint: #e3ebdf;
+    --brass: #a8791f;
+    --brass-strong: #8e6415;
+    --brass-tint: #f4e6c4;
+    --brass-ink: #2b2107;
+    --danger: #a23b2e;
+    --danger-tint: #f6e2dd;
+    --success: #3d7a4c;
+    --shadow: 0 1px 2px rgba(38,42,30,0.06), 0 6px 20px -8px rgba(38,42,30,0.18);
+    --radius: 10px;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #1a1d15;
+      --surface: #23271c;
+      --surface-2: #2a2e20;
+      --border: #3c4130;
+      --border-soft: #33382a;
+      --ink: #ece8d6;
+      --ink-soft: #aeb096;
+      --ink-faint: #7d8069;
+      --forest: #7ba98a;
+      --forest-hover: #8fbb9c;
+      --forest-ink: #0e1710;
+      --moss: #8fae86;
+      --moss-tint: #2a3324;
+      --brass: #e0ac4c;
+      --brass-strong: #f0bd5f;
+      --brass-tint: #3a2f12;
+      --brass-ink: #1b1400;
+      --danger: #e28572;
+      --danger-tint: #3a231d;
+      --success: #7fc08a;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 6px 24px -8px rgba(0,0,0,0.5);
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #1a1d15;
+    --surface: #23271c;
+    --surface-2: #2a2e20;
+    --border: #3c4130;
+    --border-soft: #33382a;
+    --ink: #ece8d6;
+    --ink-soft: #aeb096;
+    --ink-faint: #7d8069;
+    --forest: #7ba98a;
+    --forest-hover: #8fbb9c;
+    --forest-ink: #0e1710;
+    --moss: #8fae86;
+    --moss-tint: #2a3324;
+    --brass: #e0ac4c;
+    --brass-strong: #f0bd5f;
+    --brass-tint: #3a2f12;
+    --brass-ink: #1b1400;
+    --danger: #e28572;
+    --danger-tint: #3a231d;
+    --success: #7fc08a;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 6px 24px -8px rgba(0,0,0,0.5);
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Public Sans", system-ui, sans-serif;
+    font-size: 15px;
+    line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3 { font-family: "Fjalla One", "Public Sans", sans-serif; font-weight: 400; letter-spacing: 0.01em; text-wrap: balance; margin: 0; }
+  .mono { font-family: "IBM Plex Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+  a { color: inherit; }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
+
+  .app-shell { max-width: 980px; margin: 0 auto; padding: 1.25rem 1rem 4rem; }
+
+  /* ---------- header ---------- */
+  .app-header {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem 0.9rem;
+    padding: 0.9rem 1.1rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    margin-bottom: 1rem;
+  }
+  .brand-group { flex: 1 1 220px; min-width: 0; display: flex; align-items: center; gap: 0.9rem; }
+  .emblem { flex: none; width: 52px; height: 52px; }
+  .brand-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.15rem; }
+  .brand-input {
+    border: 0; background: transparent; padding: 0.1rem 0; width: 100%; min-width: 0;
+    border-bottom: 1px dashed transparent;
+  }
+  .brand-input:hover, .brand-input:focus { border-bottom-color: var(--border); }
+  .brand-input.name { font-family: "Fjalla One", sans-serif; font-size: 1.35rem; color: var(--ink); }
+  .brand-input.campaign { font-size: 0.85rem; color: var(--ink-soft); }
+  .sync-status { flex: none; margin-left: auto; display: flex; align-items: center; gap: 0.4rem; font-size: 0.72rem; color: var(--ink-faint); text-align: right; white-space: nowrap; }
+  @media (max-width: 480px) {
+    .sync-status { flex-basis: 100%; margin-left: 0; justify-content: flex-start; padding-left: calc(52px + 0.9rem); }
+  }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ink-faint); flex: none; }
+  .dot.on { background: var(--success); }
+  .dot.off { background: var(--brass); }
+
+  /* ---------- tabs ---------- */
+  .tabbar { display: flex; gap: 0.4rem; margin-bottom: 1rem; flex-wrap: wrap; }
+  .tab-btn {
+    border: 1px solid var(--border); background: var(--surface); color: var(--ink-soft);
+    padding: 0.55rem 1rem; border-radius: 999px; cursor: pointer; font-weight: 600;
+    font-size: 0.85rem; letter-spacing: 0.02em; transition: background .15s, color .15s, border-color .15s;
+  }
+  .tab-btn:hover { border-color: var(--moss); }
+  .tab-btn.active { background: var(--forest); border-color: var(--forest); color: var(--forest-ink); }
+
+  .panel { display: none; }
+  .panel.active { display: block; animation: fade .18s ease; }
+  @media (prefers-reduced-motion: reduce) { .panel.active { animation: none; } }
+  @keyframes fade { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; transform: none; } }
+
+  .card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 1.1rem; box-shadow: var(--shadow);
+  }
+  .card + .card { margin-top: 1rem; }
+  .card-title { font-size: 1rem; margin-bottom: 0.85rem; display: flex; align-items: center; flex-wrap: wrap; justify-content: space-between; gap: 0.5rem; }
+  .card-title .hint { font-family: "Public Sans", sans-serif; font-size: 0.75rem; color: var(--ink-faint); font-weight: 500; }
+
+  /* ---------- forms ---------- */
+  .field { display: flex; flex-direction: column; gap: 0.3rem; }
+  .field label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-faint); font-weight: 600; }
+  .field input, .field select {
+    border: 1px solid var(--border); background: var(--surface-2); border-radius: 7px;
+    padding: 0.5rem 0.6rem; color: var(--ink); width: 100%;
+  }
+  .field input:focus, .field select:focus { border-color: var(--moss); }
+  .money-input-wrap { position: relative; }
+  .money-input-wrap input { padding-left: 1.5rem; }
+  .money-prefix {
+    position: absolute; left: 0.65rem; top: 50%; transform: translateY(-50%);
+    color: var(--ink-faint); font-weight: 600; pointer-events: none;
+  }
+  .money-preview { font-size: 0.75rem; color: var(--ink-faint); margin-top: 0.15rem; }
+  .row { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+  .row > .field { flex: 1; min-width: 160px; }
+  @media (max-width: 480px) { .row > .field { flex-basis: 100%; } }
+
+  .btn {
+    border: 1px solid var(--border); background: var(--surface-2); color: var(--ink);
+    padding: 0.55rem 1rem; border-radius: 7px; cursor: pointer; font-weight: 600; font-size: 0.87rem;
+    display: inline-flex; align-items: center; gap: 0.4rem; transition: filter .12s, background .12s;
+  }
+  .btn:hover { filter: brightness(0.97); }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-primary { background: var(--forest); border-color: var(--forest); color: var(--forest-ink); }
+  .btn-primary:hover { background: var(--forest-hover); border-color: var(--forest-hover); }
+  .btn-brass { background: var(--brass); border-color: var(--brass); color: var(--brass-ink); }
+  .btn-danger { background: transparent; border-color: var(--danger); color: var(--danger); }
+  .btn-danger:hover { background: var(--danger-tint); }
+  .btn-ghost { background: transparent; }
+  .btn-block { width: 100%; justify-content: center; }
+  .btn-sm { padding: 0.32rem 0.6rem; font-size: 0.78rem; }
+
+  .pill-group { display: flex; gap: 0.5rem; }
+  .pill {
+    flex: 1; border: 1px solid var(--border); background: var(--surface-2); color: var(--ink-soft);
+    padding: 0.55rem 0.7rem; border-radius: 8px; cursor: pointer; text-align: center; font-weight: 600; font-size: 0.85rem;
+  }
+  .pill.active { background: var(--moss-tint); border-color: var(--moss); color: var(--ink); }
+
+  /* ---------- sell tab ---------- */
+  .sell-layout { display: grid; grid-template-columns: 1fr 320px; gap: 1rem; align-items: start; }
+  @media (max-width: 780px) { .sell-layout { grid-template-columns: 1fr; } }
+
+  .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 0.7rem; }
+  .product-card {
+    border: 1px solid var(--border); border-radius: 9px; background: var(--surface-2);
+    padding: 0.7rem; display: flex; flex-direction: column; gap: 0.5rem; cursor: pointer; text-align: left;
+    transition: border-color .12s;
+  }
+  .product-card:hover { border-color: var(--moss); }
+  .product-card.has-qty { border-color: var(--forest); background: var(--moss-tint); }
+  .product-card .pname { font-weight: 600; font-size: 0.9rem; }
+  .product-card .pprice { color: var(--ink-soft); font-size: 0.85rem; }
+  .product-card .pstock { font-size: 0.72rem; color: var(--ink-faint); }
+  .product-card .pstock.low { color: var(--brass-strong); font-weight: 600; }
+  .product-card .pstock.out { color: var(--danger); font-weight: 600; }
+  .product-card.out-of-stock { opacity: 0.55; cursor: not-allowed; }
+  .product-card.out-of-stock:hover { border-color: var(--border); }
+  .qty-stepper { display: flex; align-items: center; gap: 0.4rem; margin-top: auto; }
+  .qty-stepper button {
+    width: 28px; height: 28px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface);
+    cursor: pointer; font-size: 1rem; line-height: 1; display: flex; align-items: center; justify-content: center;
+  }
+  .qty-stepper button:hover { border-color: var(--forest); }
+  .qty-stepper .qty-val { flex: 1; text-align: center; font-weight: 700; }
+
+  .cart-panel { position: sticky; top: 1rem; }
+  @media (max-width: 780px) { .cart-panel { position: static; } }
+  .cart-list { display: flex; flex-direction: column; gap: 0.55rem; max-height: 260px; overflow-y: auto; margin-bottom: 0.75rem; }
+  .cart-item { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; }
+  .cart-item .ci-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cart-item .ci-qty { color: var(--ink-faint); }
+  .cart-item .ci-total { font-weight: 600; }
+  .cart-item .ci-remove { background: none; border: none; color: var(--ink-faint); cursor: pointer; font-size: 1rem; padding: 0 0.15rem; }
+  .cart-total-row { display: flex; justify-content: space-between; align-items: baseline; padding-top: 0.7rem; border-top: 1px dashed var(--border); margin-top: 0.4rem; }
+  .cart-total-row .amt { font-size: 1.5rem; font-weight: 700; }
+  .empty-cart { color: var(--ink-faint); font-size: 0.85rem; padding: 1rem 0; text-align: center; }
+  .form-error { color: var(--danger); font-size: 0.78rem; margin-top: 0.4rem; }
+  .sale-success { text-align: center; padding: 0.5rem 0 0.2rem; }
+  .sale-success .big-check { font-size: 2rem; }
+
+  /* ---------- tables ---------- */
+  .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  table.data-table { width: 100%; min-width: 460px; border-collapse: collapse; font-size: 0.85rem; }
+  table.data-table th { text-align: left; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-faint); padding: 0.4rem 0.5rem; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  table.data-table td { padding: 0.5rem; border-bottom: 1px solid var(--border-soft); vertical-align: top; }
+  table.data-table tr:last-child td { border-bottom: none; }
+  table.data-table td.num, table.data-table th.num { text-align: right; }
+  .badge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 999px; font-size: 0.72rem; font-weight: 600; }
+  .badge.cash { background: var(--brass-tint); color: var(--brass-ink); }
+  .badge.transfer { background: var(--moss-tint); color: var(--forest); }
+
+  /* ---------- stat tiles ---------- */
+  .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.7rem; margin-bottom: 1rem; }
+  .stat-tile { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.85rem 1rem; box-shadow: var(--shadow); }
+  .stat-tile .label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-faint); font-weight: 600; }
+  .stat-tile .value { font-size: 1.5rem; font-weight: 700; margin-top: 0.15rem; }
+  .stat-tile.accent { border-color: var(--brass); }
+  .stat-tile.accent .value { color: var(--brass-strong); }
+
+  .empty-state { text-align: center; padding: 2rem 1rem; color: var(--ink-faint); }
+
+  .icon-btn { background: none; border: 1px solid var(--border); border-radius: 6px; width: 30px; height: 30px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+  .icon-btn:hover { border-color: var(--moss); }
+
+  .inline-confirm { display: flex; gap: 0.3rem; align-items: center; }
+  .grow { flex: 1; }
+
+  /* ---------- cash count ---------- */
+  .cash-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(195px, 1fr)); gap: 0.6rem; }
+  .cash-row { display: flex; align-items: center; gap: 0.4rem; border: 1px solid var(--border); border-radius: 8px; padding: 0.45rem 0.55rem; background: var(--surface-2); }
+  .cash-row .cash-label { font-weight: 700; width: 58px; flex: none; }
+  .cash-row .cash-x { color: var(--ink-faint); flex: none; }
+  .cash-row input { width: 46px; border: 1px solid var(--border); border-radius: 6px; padding: 0.3rem; text-align: center; background: var(--surface); flex: none; }
+  .cash-row .cash-sub { margin-left: auto; font-size: 0.78rem; color: var(--ink-soft); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right; }
+  .cash-total-row { display: flex; justify-content: space-between; align-items: baseline; margin-top: 0.9rem; padding-top: 0.7rem; border-top: 1px dashed var(--border); }
+  .cash-total-row .amt { font-size: 1.4rem; font-weight: 700; }
+
+  /* ---------- print ---------- */
+  #print-root { display: none; }
+  .receipt { font-family: "IBM Plex Mono", monospace; width: 80mm; max-width: 100%; margin: 0 auto; font-size: 12.5px; color: #111; }
+  .receipt .r-center { text-align: center; }
+  .receipt .r-title { font-family: "Fjalla One", sans-serif; font-size: 16px; }
+  .receipt hr { border: none; border-top: 1px dashed #111; margin: 8px 0; }
+  .receipt table { width: 100%; border-collapse: collapse; }
+  .receipt td { padding: 2px 0; vertical-align: top; }
+  .receipt td.num { text-align: right; }
+  .report-print { color: #111; font-family: "Public Sans", sans-serif; }
+  .report-print h1 { font-family: "Fjalla One", sans-serif; font-size: 22px; margin-bottom: 2px; }
+  .report-print .rp-sub { color: #444; font-size: 12px; margin-bottom: 14px; }
+  .report-print table { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 16px; }
+  .report-print th, .report-print td { border: 1px solid #999; padding: 4px 6px; text-align: left; }
+  .report-print th.num, .report-print td.num { text-align: right; }
+  .report-print .rp-stats { display: flex; gap: 18px; margin-bottom: 16px; }
+  .report-print .rp-stat { border: 1px solid #999; padding: 6px 10px; }
+  .report-print .rp-stat b { display: block; font-size: 16px; }
+  .signature-row { display: flex; gap: 40px; margin-top: 40px; }
+  .signature-line { flex: 1; border-top: 1px solid #111; padding-top: 4px; font-size: 11px; text-align: center; }
+
+  @media print {
+    .app-shell { display: none !important; }
+    #print-root { display: block !important; background: #fff; padding: 16px; }
+  }
+</style>
+</head>
+<body>
+
+
+<div class="app-shell" id="app"></div>
+<div id="print-root"></div>
+
+
+<!-- ============================================================
+     CONFIGURACION DE FIREBASE
+     Reemplaza el objeto de abajo con el "firebaseConfig" de tu
+     propio proyecto (Firebase Console > Configuracion del proyecto
+     > Tus apps > SDK setup and configuration).
+     ============================================================ -->
+<script>
+  var firebaseConfig = {
+    apiKey: "AIzaSyBWupJNJ1lThAZNc_JmqL7uJaqaQi4mI_I",
+    authDomain: "appcaja-scout.firebaseapp.com",
+    projectId: "appcaja-scout",
+    storageBucket: "appcaja-scout.firebasestorage.app",
+    messagingSenderId: "537139720642",
+    appId: "1:537139720642:web:c1d48aed88106a05eaa65b"
+  };
+</script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+
+<!-- ============================================================
+     CONFIGURACION DE ENVÍO DE CORREO (Google Apps Script + tu Gmail)
+     Reemplaza el TODO de abajo con la URL de tu Apps Script publicado
+     (ver el README para los pasos). Si lo dejas como está, el botón
+     "Enviar por correo" abrirá tu app de correo normal en vez de
+     enviarlo automáticamente.
+     ============================================================ -->
+<script>
+  var appsScriptConfig = {
+    url: "https://script.google.com/macros/s/AKfycbwU8HjEmh1vLiGTn7SI7kwa0YAju0K840ZLBkWVS5C4kd0T8rW_8gjDX7fJoVvcapSb5A/exec"
+  };
+</script>
+
+<script>
+(function () {
+  "use strict";
+
+  var CLP = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 });
+  var DT = new Intl.DateTimeFormat('es-CL', { dateStyle: 'short', timeStyle: 'short' });
+  function money(n) { return CLP.format(Math.round(n || 0)); }
+  function fmtDate(iso) { try { return DT.format(new Date(iso)); } catch (e) { return iso; } }
+  function saleLabel(s) { return s.saleNumber ? ('#' + String(s.saleNumber).padStart(4, '0')) : ('#R-' + String(s.id).slice(-6).toUpperCase()); }
+  function todayKey() { return new Date().toLocaleDateString('en-CA'); }
+  function dateKey(iso) { try { return new Date(iso).toLocaleDateString('en-CA'); } catch (e) { return ''; } }
+  function uid() { return Math.random().toString(36).slice(2, 9); }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+
+  function lsGet(key, fallback) {
+    try { var v = localStorage.getItem(key); return v === null ? fallback : JSON.parse(v); } catch (e) { return fallback; }
+  }
+  function lsSet(key, val) {
+    try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) { /* ignore */ }
+  }
+
+  // ---------------- state ----------------
+  var db = null, useDb = false;
+
+  var seedProducts = [
+    { id: 'p1', name: 'Galletas Scout (caja)', price: 3000, stock: 40, createdAt: 1 },
+    { id: 'p2', name: 'Empanadas de Campamento', price: 1500, stock: 60, createdAt: 2 },
+    { id: 'p3', name: 'Número Rifa Pro Fondos', price: 2000, stock: null, createdAt: 3 },
+    { id: 'p4', name: 'Bono Cooperador', price: 5000, stock: null, createdAt: 4 },
+    { id: 'p5', name: 'Pulsera Artesanal', price: 2500, stock: 25, createdAt: 5 }
+  ];
+  // stock === null/undefined significa "sin control de stock" (ilimitado)
+
+  var CASH_DENOMS = [20000, 10000, 5000, 2000, 1000, 500, 100, 50, 10];
+  function cashCountTotal(cc) {
+    cc = cc || {};
+    return CASH_DENOMS.reduce(function (sum, d) { return sum + (parseInt(cc[d], 10) || 0) * d; }, 0);
+  }
+  function cashCountPieces(cc) {
+    cc = cc || {};
+    return CASH_DENOMS.reduce(function (sum, d) { return sum + (parseInt(cc[d], 10) || 0); }, 0);
+  }
+
+  var state = {
+    products: seedProducts.slice(),
+    sales: [],
+    closures: [],
+    settings: { troopName: 'Mi Tropa Scout', campaignName: 'Campaña de Ventas 2026', notifyEmail: '' },
+    synced: false,
+    tab: lsGet('scoutcaja_tab', 'vender'),
+    cart: {},
+    vendorName: lsGet('scoutcaja_vendor', ''),
+    payMethod: 'efectivo',
+    cashReceived: '',
+    canInstall: false,
+    isIOS: /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream,
+    isStandalone: (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true,
+    settingsSaveMsg: '',
+    confirmDeleteAll: false,
+    btPrinterName: lsGet('scoutcaja_bt_printer_name', ''),
+    btConnecting: false,
+    btError: '',
+    deletingAll: false,
+    note: '',
+    lastSale: null,
+    lastSaleTotal: 0,
+    saleJustDone: false,
+    formError: '',
+    newProductName: '',
+    newProductPrice: '',
+    newProductStock: '',
+    paperWidth: lsGet('scoutcaja_paper', '80'),
+    autoPrint: lsGet('scoutcaja_autoprint', false),
+    confirmDeleteId: null,
+    report: { vendor: 'all', from: todayKey(), to: todayKey(), scope: 'today' },
+    closureForm: { vendor: 'all', from: todayKey(), to: todayKey(), startingFund: '', cashCount: {} }
+  };
+
+  function render() {
+    var active = document.activeElement;
+    var activeId = (active && active.id) ? active.id : null;
+    var selStart = null, selEnd = null;
+    if (activeId && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) {
+      try { selStart = active.selectionStart; selEnd = active.selectionEnd; } catch (e) {}
+    }
+    App.innerHTML = renderApp();
+    bindEvents();
+    if (activeId) {
+      var el = document.getElementById(activeId);
+      if (el) {
+        el.focus();
+        if (selStart != null && el.setSelectionRange) {
+          try { el.setSelectionRange(selStart, selEnd); } catch (e) {}
+        }
+      }
+    }
+  }
+
+  // ---------------- db wiring ----------------
+  function connectDb() {
+    try {
+      if (!window.firebase || !firebaseConfig || firebaseConfig.apiKey.indexOf('TODO') === 0) {
+        console.warn('Caja Scout: falta configurar firebaseConfig. La app funcionará solo en modo local (sin compartir datos).');
+        render();
+        return;
+      }
+      firebase.initializeApp(firebaseConfig);
+      db = firebase.firestore();
+      useDb = true;
+
+      db.doc('settings/config').onSnapshot(function (snap) {
+        if (snap.exists) {
+          var d = snap.data();
+          state.settings.troopName = d.troopName || state.settings.troopName;
+          state.settings.campaignName = d.campaignName || state.settings.campaignName;
+          state.settings.notifyEmail = (d.notifyEmail != null ? d.notifyEmail : state.settings.notifyEmail);
+        }
+        state.synced = true;
+        render();
+      }, function (err) { console.error(err); render(); });
+
+      db.collection('products').orderBy('createdAt', 'asc').onSnapshot(function (qs) {
+        if (qs.empty) {
+          // Primera vez: sembramos el catálogo inicial en Firestore.
+          seedProducts.forEach(function (p) {
+            var copy = Object.assign({}, p);
+            delete copy.id;
+            db.collection('products').doc(p.id).set(copy).catch(function () {});
+          });
+          return;
+        }
+        state.products = qs.docs.map(function (d) { return Object.assign({ id: d.id }, d.data()); });
+        render();
+      }, function (err) { console.error(err); render(); });
+
+      db.collection('sales').orderBy('createdAt', 'desc').limit(500).onSnapshot(function (qs) {
+        state.sales = qs.docs.map(function (d) { return Object.assign({ id: d.id }, d.data()); });
+        render();
+      }, function (err) { console.error(err); render(); });
+
+      db.collection('closures').orderBy('closedAt', 'desc').limit(50).onSnapshot(function (qs) {
+        state.closures = qs.docs.map(function (d) { return Object.assign({ id: d.id }, d.data()); });
+        render();
+      }, function (err) { console.error(err); render(); });
+
+      render();
+    } catch (e) {
+      console.error(e);
+      render();
+    }
+  }
+
+  // ---------------- actions ----------------
+  function setTab(t) { state.tab = t; state.confirmDeleteId = null; lsSet('scoutcaja_tab', t); render(); }
+
+  function addQty(pid, delta) {
+    var p = state.products.find(function (x) { return x.id === pid; });
+    var cur = state.cart[pid] || 0;
+    var next = Math.max(0, cur + delta);
+    if (p && p.stock != null) next = Math.min(next, Math.max(0, p.stock));
+    if (next === 0) delete state.cart[pid]; else state.cart[pid] = next;
+    state.formError = '';
+    render();
+  }
+
+  function cartItems() {
+    return Object.keys(state.cart).map(function (pid) {
+      var p = state.products.find(function (x) { return x.id === pid; });
+      if (!p) return null;
+      var qty = state.cart[pid];
+      return { productId: pid, name: p.name, price: p.price, qty: qty, total: p.price * qty };
+    }).filter(Boolean);
+  }
+  function cartTotal() { return cartItems().reduce(function (s, i) { return s + i.total; }, 0); }
+
+  function setVendor(v) { state.vendorName = v; lsSet('scoutcaja_vendor', v); }
+  function setPayMethod(m) { state.payMethod = m; if (m !== 'efectivo') state.cashReceived = ''; render(); }
+  function setCashReceived(v) { state.cashReceived = v; render(); }
+  function cashChange() {
+    var received = parseInt(state.cashReceived, 10);
+    if (!isFinite(received)) return 0;
+    return received - cartTotal();
+  }
+  function setNote(v) { state.note = v; }
+  function setAutoPrint(v) { state.autoPrint = v; lsSet('scoutcaja_autoprint', v); render(); }
+
+  function nextSaleNumber(cb) {
+    if (useDb) {
+      var counterRef = db.doc('counters/sales');
+      db.runTransaction(function (tx) {
+        return tx.get(counterRef).then(function (doc) {
+          var current = (doc.exists && doc.data().value) || 0;
+          var next = current + 1;
+          tx.set(counterRef, { value: next });
+          return next;
+        });
+      }).then(function (n) { cb(n); }).catch(function () { cb(null); });
+    } else {
+      state.localSaleCounter = (state.localSaleCounter || 0) + 1;
+      cb(state.localSaleCounter);
+    }
+  }
+
+  function registerSale() {
+    var items = cartItems();
+    var vendor = (state.vendorName || '').trim();
+    if (!vendor) { state.formError = 'Escribe el nombre del vendedor o vendedora.'; render(); return; }
+    if (items.length === 0) { state.formError = 'Agrega al menos un producto.'; render(); return; }
+    state.formError = '';
+    var now = new Date();
+
+    var total = cartTotal();
+    var cashReceived = state.payMethod === 'efectivo' && state.cashReceived !== '' ? (parseInt(state.cashReceived, 10) || 0) : null;
+    var change = cashReceived != null ? (cashReceived - total) : null;
+
+    nextSaleNumber(function (saleNumber) {
+      var sale = {
+        saleNumber: saleNumber || null,
+        vendorName: vendor,
+        items: items,
+        total: total,
+        paymentMethod: state.payMethod,
+        cashReceived: cashReceived,
+        change: change,
+        note: (state.note || '').trim(),
+        createdAt: now.toISOString(),
+        dateKey: now.toLocaleDateString('en-CA')
+      };
+
+      function afterSaved(id) {
+        state.lastSale = Object.assign({ id: id }, sale);
+        state.lastSaleTotal = sale.total;
+        state.cart = {};
+        state.note = '';
+        state.cashReceived = '';
+        state.saleJustDone = true;
+        applyStockDelta(items, -1);
+        render();
+        if (state.autoPrint) printReceipt();
+      }
+
+      if (useDb) {
+        db.collection('sales').add(sale).then(function (ref) { afterSaved(ref.id); })
+          .catch(function () { state.formError = 'No se pudo guardar la venta. Intenta de nuevo.'; render(); });
+      } else {
+        var id = 'local-' + uid();
+        state.sales.unshift(Object.assign({ id: id }, sale));
+        afterSaved(id);
+      }
+    });
+  }
+
+  // dir = -1 al vender (descuenta), +1 al anular una venta (repone)
+  function applyStockDelta(items, dir) {
+    items.forEach(function (it) {
+      var p = state.products.find(function (x) { return x.id === it.productId; });
+      if (!p || p.stock == null) return;
+      var newStock = Math.max(0, p.stock + dir * it.qty);
+      p.stock = newStock;
+      if (useDb) { db.doc('products/' + p.id).update({ stock: newStock }).catch(function () {}); }
+    });
+  }
+
+  function newSale() { state.saleJustDone = false; state.lastSale = null; render(); }
+
+  function deleteSale(id) {
+    var s = state.sales.find(function (x) { return x.id === id; });
+    if (s) applyStockDelta(s.items, 1);
+    if (useDb) { db.doc('sales/' + id).delete(); }
+    else { state.sales = state.sales.filter(function (x) { return x.id !== id; }); render(); }
+    state.confirmDeleteId = null;
+  }
+
+  function saveSettings(field, value) {
+    state.settings[field] = value;
+    if (useDb) { db.doc('settings/config').set(state.settings).catch(function () {}); }
+  }
+
+  function addProduct() {
+    var name = (state.newProductName || '').trim();
+    var price = parseInt(state.newProductPrice, 10);
+    if (!name || !isFinite(price) || price < 0) return;
+    var stockRaw = (state.newProductStock || '').trim();
+    var stock = stockRaw === '' ? null : Math.max(0, parseInt(stockRaw, 10) || 0);
+    var prod = { name: name, price: price, stock: stock, createdAt: Date.now() };
+    if (useDb) { db.collection('products').add(prod); }
+    else { state.products.push(Object.assign({ id: 'local-' + uid() }, prod)); }
+    state.newProductName = ''; state.newProductPrice = ''; state.newProductStock = '';
+    render();
+  }
+  function updateProduct(id, field, value) {
+    var p = state.products.find(function (x) { return x.id === id; });
+    if (!p) return;
+    if (field === 'price') { p.price = parseInt(value, 10) || 0; }
+    else if (field === 'stock') { var v = String(value).trim(); p.stock = v === '' ? null : Math.max(0, parseInt(v, 10) || 0); }
+    else { p.name = value; }
+    var patch = {};
+    patch[field] = p[field];
+    if (useDb) { db.doc('products/' + id).update(patch).catch(function () {}); }
+  }
+  function deleteProduct(id) {
+    if (useDb) { db.doc('products/' + id).delete(); }
+    else { state.products = state.products.filter(function (x) { return x.id !== id; }); render(); }
+    state.confirmDeleteId = null;
+  }
+
+  // ---------------- report helpers ----------------
+  function vendorList() {
+    var set = {};
+    state.sales.forEach(function (s) { set[s.vendorName] = true; });
+    return Object.keys(set).sort();
+  }
+  function filteredSales(f) {
+    return state.sales.filter(function (s) {
+      if (f.vendor !== 'all' && s.vendorName !== f.vendor) return false;
+      var dk = s.dateKey || dateKey(s.createdAt);
+      if (f.from && dk < f.from) return false;
+      if (f.to && dk > f.to) return false;
+      return true;
+    });
+  }
+  function reportStats(sales) {
+    var total = 0, units = 0, byProduct = {}, byMethod = { efectivo: 0, transferencia: 0 };
+    sales.forEach(function (s) {
+      total += s.total;
+      byMethod[s.paymentMethod] = (byMethod[s.paymentMethod] || 0) + s.total;
+      s.items.forEach(function (it) {
+        units += it.qty;
+        if (!byProduct[it.name]) byProduct[it.name] = { qty: 0, total: 0 };
+        byProduct[it.name].qty += it.qty;
+        byProduct[it.name].total += it.total;
+      });
+    });
+    return { total: total, units: units, count: sales.length, byProduct: byProduct, byMethod: byMethod };
+  }
+
+  function setReportFilter(field, value) {
+    state.report[field] = value;
+    if (field !== 'scope') state.report.scope = 'custom';
+    render();
+  }
+  function quickRange(scope) {
+    var t = todayKey();
+    if (scope === 'today') { state.report.from = t; state.report.to = t; }
+    else if (scope === 'all') { state.report.from = ''; state.report.to = ''; }
+    state.report.scope = scope;
+    render();
+  }
+
+  // ---------------- print builders ----------------
+  function buildReceiptHtml(sale, widthMm) {
+    var rows = sale.items.map(function (it) {
+      return '<tr><td>' + it.qty + '×</td><td>' + esc(it.name) + '</td><td class="num">' + money(it.total) + '</td></tr>';
+    }).join('');
+    return '' +
+      '<div class="receipt" style="width:' + (widthMm || 80) + 'mm">' +
+      '<div class="r-center r-title">' + esc(state.settings.troopName) + '</div>' +
+      '<div class="r-center">' + esc(state.settings.campaignName) + '</div>' +
+      '<hr>' +
+      '<div>Recibo N° ' + (sale.saleNumber ? String(sale.saleNumber).padStart(4, '0') : ('R-' + String(sale.id).slice(-6).toUpperCase())) + '</div>' +
+      '<div>Fecha: ' + fmtDate(sale.createdAt) + '</div>' +
+      '<div>Vendedor(a): ' + esc(sale.vendorName) + '</div>' +
+      (sale.note ? '<div>Nota: ' + esc(sale.note) + '</div>' : '') +
+      '<hr>' +
+      '<table>' + rows + '</table>' +
+      '<hr>' +
+      '<table><tr><td><b>TOTAL</b></td><td class="num"><b>' + money(sale.total) + '</b></td></tr></table>' +
+      '<div>Método de pago: ' + (sale.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia') + '</div>' +
+      (sale.cashReceived != null ? ('<table><tr><td>Paga con</td><td class="num">' + money(sale.cashReceived) + '</td></tr>' +
+        '<tr><td><b>Vuelto</b></td><td class="num"><b>' + money(sale.change) + '</b></td></tr></table>') : '') +
+      '<hr>' +
+      '<div class="r-center">¡Gracias por apoyar al Grupo Scouts! ⛺</div>' +
+      '</div>';
+  }
+
+  function buildReportHtml(sales, f) {
+    var st = reportStats(sales);
+    var range = (f.from && f.to) ? (f.from === f.to ? f.from : f.from + ' a ' + f.to) : 'Todas las fechas';
+    var vend = f.vendor === 'all' ? 'Todos los vendedores' : f.vendor;
+    var prodRows = Object.keys(st.byProduct).sort(function (a, b) { return st.byProduct[b].total - st.byProduct[a].total; })
+      .map(function (name) { var p = st.byProduct[name]; return '<tr><td>' + esc(name) + '</td><td class="num">' + p.qty + '</td><td class="num">' + money(p.total) + '</td></tr>'; }).join('') ||
+      '<tr><td colspan="3">Sin ventas en este período.</td></tr>';
+    var txRows = sales.map(function (s) {
+      var itemsSummary = s.items.map(function (it) { return it.qty + '× ' + it.name; }).join(', ');
+      return '<tr><td>' + saleLabel(s) + '</td><td>' + fmtDate(s.createdAt) + '</td><td>' + esc(s.vendorName) + '</td><td>' + esc(itemsSummary) + '</td><td>' + (s.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia') + '</td><td class="num">' + money(s.total) + '</td></tr>';
+    }).join('') || '<tr><td colspan="6">Sin transacciones.</td></tr>';
+
+    return '' +
+      '<div class="report-print">' +
+      '<h1>Reporte de Ventas — ' + esc(state.settings.troopName) + '</h1>' +
+      '<div class="rp-sub">' + esc(state.settings.campaignName) + ' · Período: ' + esc(range) + ' · Vendedor(a): ' + esc(vend) + ' · Generado ' + fmtDate(new Date().toISOString()) + '</div>' +
+      '<div class="rp-stats">' +
+      '<div class="rp-stat">Total recaudado<b>' + money(st.total) + '</b></div>' +
+      '<div class="rp-stat">Transacciones<b>' + st.count + '</b></div>' +
+      '<div class="rp-stat">Unidades vendidas<b>' + st.units + '</b></div>' +
+      '<div class="rp-stat">Efectivo<b>' + money(st.byMethod.efectivo || 0) + '</b></div>' +
+      '<div class="rp-stat">Transferencia<b>' + money(st.byMethod.transferencia || 0) + '</b></div>' +
+      '</div>' +
+      '<table><thead><tr><th>Producto</th><th class="num">Cant.</th><th class="num">Total</th></tr></thead><tbody>' + prodRows + '</tbody></table>' +
+      '<table><thead><tr><th>N°</th><th>Fecha</th><th>Vendedor(a)</th><th>Detalle</th><th>Método</th><th class="num">Total</th></tr></thead><tbody>' + txRows + '</tbody></table>' +
+      '</div>';
+  }
+
+  function buildClosureHtml(sales, f, counted, cashBreakdown, startingFund) {
+    var st = reportStats(sales);
+    var fund = startingFund || 0;
+    var salesCash = st.byMethod.efectivo || 0;
+    var expectedCash = fund + salesCash;
+    var expectedTransfer = st.byMethod.transferencia || 0;
+    var countedNum = counted === '' || counted == null ? null : parseInt(counted, 10);
+    var diff = countedNum == null ? null : countedNum - expectedCash;
+    var range = f.from === f.to ? f.from : f.from + ' a ' + f.to;
+    var vend = f.vendor === 'all' ? 'Todos los vendedores' : f.vendor;
+    var breakdownRows = '';
+    if (cashBreakdown) {
+      var rows = CASH_DENOMS.filter(function (d) { return (cashBreakdown[d] || 0) > 0; })
+        .map(function (d) { return '<tr><td>' + money(d) + (d >= 1000 ? ' (billete)' : ' (moneda)') + '</td><td class="num">×' + cashBreakdown[d] + '</td><td class="num">' + money(d * cashBreakdown[d]) + '</td></tr>'; }).join('');
+      if (rows) breakdownRows = '<table><thead><tr><th>Denominación</th><th class="num">Cantidad</th><th class="num">Subtotal</th></tr></thead><tbody>' + rows + '</tbody></table>';
+    }
+    return '' +
+      '<div class="report-print">' +
+      '<h1>Cierre de Caja — ' + esc(state.settings.troopName) + '</h1>' +
+      '<div class="rp-sub">' + esc(state.settings.campaignName) + ' · Período: ' + esc(range) + ' · Vendedor(a): ' + esc(vend) + ' · Generado ' + fmtDate(new Date().toISOString()) + '</div>' +
+      '<table><tbody>' +
+      '<tr><td>Ventas registradas</td><td class="num">' + st.count + '</td></tr>' +
+      '<tr><td>Fondo de inicio</td><td class="num">' + money(fund) + '</td></tr>' +
+      '<tr><td>Ventas en efectivo</td><td class="num">' + money(salesCash) + '</td></tr>' +
+      '<tr><td><b>Efectivo esperado (fondo + ventas)</b></td><td class="num"><b>' + money(expectedCash) + '</b></td></tr>' +
+      '<tr><td>Transferencia esperada</td><td class="num">' + money(expectedTransfer) + '</td></tr>' +
+      (countedNum != null ? '<tr><td>Efectivo contado</td><td class="num">' + money(countedNum) + '</td></tr><tr><td><b>Diferencia</b></td><td class="num"><b>' + money(diff) + '</b></td></tr>' : '') +
+      '</tbody></table>' +
+      breakdownRows +
+      '<div class="signature-row">' +
+      '<div class="signature-line">Firma vendedor(a)</div>' +
+      '<div class="signature-line">Firma responsable de tropa</div>' +
+      '</div>' +
+      '</div>';
+  }
+
+  function doPrint(html) {
+    document.getElementById('print-root').innerHTML = html;
+    setTimeout(function () { window.print(); }, 30);
+  }
+
+  // ---------------- impresora térmica por Bluetooth (BLE) ----------------
+  var btDevice = null, btCharacteristic = null;
+  var BT_CANDIDATE_SERVICES = [
+    '000018f0-0000-1000-8000-00805f9b34fb',
+    '0000ff00-0000-1000-8000-00805f9b34fb',
+    '49535343-fe7d-4ae5-8fa9-9fafd205e455',
+    '6e400001-b5a3-f393-e0a9-e50e24dcca9e'
+  ];
+
+  function connectPrinter() {
+    if (!navigator.bluetooth) {
+      state.btError = 'Este navegador no soporta Bluetooth (usa Chrome en Android o en computador; no funciona en iPhone/Safari).';
+      render();
+      return;
+    }
+    state.btConnecting = true; state.btError = ''; render();
+    navigator.bluetooth.requestDevice({
+      acceptAllDevices: true,
+      optionalServices: BT_CANDIDATE_SERVICES
+    }).then(function (device) {
+      btDevice = device;
+      device.addEventListener('gattserverdisconnected', function () {
+        btCharacteristic = null;
+        state.btError = 'Se desconectó la impresora.';
+        render();
+      });
+      return device.gatt.connect();
+    }).then(function (server) {
+      return server.getPrimaryServices();
+    }).then(function (services) {
+      var found = null;
+      function tryService(i) {
+        if (i >= services.length) {
+          if (!found) throw new Error('No se encontró un canal de escritura en esta impresora.');
+          return found;
+        }
+        return services[i].getCharacteristics().then(function (chars) {
+          var writable = chars.find(function (c) { return c.properties.write || c.properties.writeWithoutResponse; });
+          if (writable) { found = writable; return found; }
+          return tryService(i + 1);
+        });
+      }
+      return tryService(0);
+    }).then(function (characteristic) {
+      btCharacteristic = characteristic;
+      state.btPrinterName = (btDevice && btDevice.name) || 'Impresora Bluetooth';
+      lsSet('scoutcaja_bt_printer_name', state.btPrinterName);
+      state.btConnecting = false;
+      state.btError = '';
+      render();
+      alert('¡Impresora "' + state.btPrinterName + '" conectada! Ya puedes imprimir recibos directo, sin el diálogo de imprimir.');
+    }).catch(function (err) {
+      console.error(err);
+      state.btConnecting = false;
+      state.btError = 'No se pudo conectar: ' + (err && err.message ? err.message : err) + '. Si tu impresora no aparece en la lista o falla aquí, probablemente es Bluetooth clásico (no compatible con esta función).';
+      render();
+    });
+  }
+
+  function disconnectPrinter() {
+    if (btDevice && btDevice.gatt && btDevice.gatt.connected) btDevice.gatt.disconnect();
+    btDevice = null; btCharacteristic = null;
+    state.btPrinterName = '';
+    lsSet('scoutcaja_bt_printer_name', '');
+    render();
+  }
+
+  function escposFromText(lines) {
+    var encoder = new TextEncoder();
+    var bytes = [];
+    bytes.push(0x1B, 0x40); // ESC @ : inicializa la impresora
+    lines.forEach(function (l) {
+      var enc = encoder.encode(l + '\n');
+      for (var i = 0; i < enc.length; i++) bytes.push(enc[i]);
+    });
+    bytes.push(0x0A, 0x0A, 0x0A);
+    bytes.push(0x1D, 0x56, 0x01); // GS V 1 : corte de papel
+    return new Uint8Array(bytes);
+  }
+
+  function sendToPrinter(bytes) {
+    if (!btCharacteristic) return Promise.reject(new Error('No hay impresora conectada'));
+    var chunkSize = 180; // tamaño conservador para no exceder el límite de la conexión BLE
+    var chain = Promise.resolve();
+    for (var i = 0; i < bytes.length; i += chunkSize) {
+      (function (chunk) {
+        chain = chain.then(function () { return btCharacteristic.writeValue(chunk); });
+      })(bytes.slice(i, i + chunkSize));
+    }
+    return chain;
+  }
+
+  function buildReceiptLines(sale) {
+    var lines = [];
+    lines.push(state.settings.troopName);
+    lines.push(state.settings.campaignName);
+    lines.push('--------------------------------');
+    lines.push('Recibo N° ' + (sale.saleNumber ? String(sale.saleNumber).padStart(4, '0') : ('R-' + String(sale.id).slice(-6).toUpperCase())));
+    lines.push('Fecha: ' + fmtDate(sale.createdAt));
+    lines.push('Vendedor(a): ' + sale.vendorName);
+    if (sale.note) lines.push('Nota: ' + sale.note);
+    lines.push('--------------------------------');
+    sale.items.forEach(function (it) {
+      lines.push(it.qty + 'x ' + it.name);
+      lines.push('   ' + money(it.total));
+    });
+    lines.push('--------------------------------');
+    lines.push('TOTAL: ' + money(sale.total));
+    lines.push('Método de pago: ' + (sale.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'));
+    if (sale.cashReceived != null) {
+      lines.push('Paga con: ' + money(sale.cashReceived));
+      lines.push('Vuelto: ' + money(sale.change));
+    }
+    lines.push('--------------------------------');
+    lines.push('¡Gracias por apoyar al Grupo Scouts!');
+    return lines;
+  }
+
+  function printReceiptSmart(sale) {
+    if (btCharacteristic) {
+      sendToPrinter(escposFromText(buildReceiptLines(sale))).catch(function (err) {
+        console.error(err);
+        alert('No se pudo imprimir en la impresora Bluetooth. Se abrirá el diálogo de impresión normal.');
+        doPrint(buildReceiptHtml(sale, state.paperWidth));
+      });
+    } else {
+      doPrint(buildReceiptHtml(sale, state.paperWidth));
+    }
+  }
+
+  function buildReportText(sales, f) {
+    var st = reportStats(sales);
+    var range = (f.from && f.to) ? (f.from === f.to ? f.from : f.from + ' a ' + f.to) : 'Todas las fechas';
+    var vend = f.vendor === 'all' ? 'Todos los vendedores' : f.vendor;
+    var lines = [];
+    lines.push('REPORTE DE VENTAS — ' + state.settings.troopName);
+    lines.push(state.settings.campaignName);
+    lines.push('Período: ' + range + ' · Vendedor(a): ' + vend);
+    lines.push('Generado: ' + fmtDate(new Date().toISOString()));
+    lines.push('');
+    lines.push('Total recaudado: ' + money(st.total));
+    lines.push('Transacciones: ' + st.count);
+    lines.push('Unidades vendidas: ' + st.units);
+    lines.push('Efectivo: ' + money(st.byMethod.efectivo || 0));
+    lines.push('Transferencia: ' + money(st.byMethod.transferencia || 0));
+    lines.push('');
+    lines.push('Ventas por producto:');
+    var prods = Object.keys(st.byProduct).sort(function (a, b) { return st.byProduct[b].total - st.byProduct[a].total; });
+    if (prods.length) {
+      prods.forEach(function (name) {
+        var p = st.byProduct[name];
+        lines.push('  - ' + name + ': ' + p.qty + ' u. · ' + money(p.total));
+      });
+    } else {
+      lines.push('  Sin ventas en este período.');
+    }
+    return lines.join('\n');
+  }
+
+  function buildClosureText(sales, f, counted, cashBreakdown, startingFund) {
+    var st = reportStats(sales);
+    var fund = startingFund || 0;
+    var salesCash = st.byMethod.efectivo || 0;
+    var expectedCash = fund + salesCash;
+    var expectedTransfer = st.byMethod.transferencia || 0;
+    var countedNum = counted === '' || counted == null ? null : parseInt(counted, 10);
+    var diff = countedNum == null ? null : countedNum - expectedCash;
+    var range = f.from === f.to ? f.from : f.from + ' a ' + f.to;
+    var vend = f.vendor === 'all' ? 'Todos los vendedores' : f.vendor;
+    var lines = [];
+    lines.push('CIERRE DE CAJA — ' + state.settings.troopName);
+    lines.push(state.settings.campaignName);
+    lines.push('Período: ' + range + ' · Vendedor(a): ' + vend);
+    lines.push('Generado: ' + fmtDate(new Date().toISOString()));
+    lines.push('');
+    lines.push('Ventas registradas: ' + st.count);
+    lines.push('Fondo de inicio: ' + money(fund));
+    lines.push('Ventas en efectivo: ' + money(salesCash));
+    lines.push('Efectivo esperado (fondo + ventas): ' + money(expectedCash));
+    lines.push('Transferencia esperada: ' + money(expectedTransfer));
+    if (countedNum != null) {
+      lines.push('Efectivo contado: ' + money(countedNum));
+      lines.push('Diferencia: ' + money(diff));
+    }
+    if (cashBreakdown) {
+      var rows = CASH_DENOMS.filter(function (d) { return (cashBreakdown[d] || 0) > 0; });
+      if (rows.length) {
+        lines.push('');
+        lines.push('Detalle de efectivo contado:');
+        rows.forEach(function (d) {
+          lines.push('  - ' + money(d) + (d >= 1000 ? ' (billete)' : ' (moneda)') + ' × ' + cashBreakdown[d] + ' = ' + money(d * cashBreakdown[d]));
+        });
+      }
+    }
+    return lines.join('\n');
+  }
+
+  var appsScriptReady = !!(appsScriptConfig && appsScriptConfig.url && appsScriptConfig.url.indexOf('TODO') !== 0);
+
+  function sendEmail(subject, body, btnEl) {
+    var to = (state.settings.notifyEmail || '').trim();
+
+    if (appsScriptReady) {
+      var originalText = btnEl ? btnEl.textContent : null;
+      if (btnEl) { btnEl.disabled = true; btnEl.textContent = 'Enviando…'; }
+      fetch(appsScriptConfig.url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // evita el preflight CORS
+        body: JSON.stringify({ to: to, subject: subject, message: body })
+      }).then(function (res) { return res.json(); }).then(function (data) {
+        if (btnEl) { btnEl.disabled = false; btnEl.textContent = originalText; }
+        if (data && data.ok) {
+          alert('¡Correo enviado a ' + to + ' desde tu Gmail!');
+        } else {
+          alert('Google respondió con un error al enviar: ' + (data && data.error ? data.error : 'desconocido'));
+        }
+      }).catch(function (err) {
+        console.error(err);
+        if (btnEl) { btnEl.disabled = false; btnEl.textContent = originalText; }
+        alert('No se pudo confirmar el envío (puede ser un tema de conexión). Revisa la carpeta "Enviados" de tu Gmail para confirmar si salió.');
+      });
+      return;
+    }
+
+    openMailto(to, subject, body);
+  }
+
+  function openMailto(to, subject, body) {
+    var url = 'mailto:' + encodeURIComponent(to) + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
+    window.location.href = url;
+  }
+
+  function emailReport(e) {
+    var f = state.report;
+    var sales = filteredSales(f);
+    if (!(state.settings.notifyEmail || '').trim()) { alert('Primero ingresa un correo de destino en Configuración.'); return; }
+    sendEmail('Reporte de ventas — ' + state.settings.troopName, buildReportText(sales, f), e && e.currentTarget);
+  }
+
+  function emailClosure(e) {
+    if (!(state.settings.notifyEmail || '').trim()) { alert('Primero ingresa un correo de destino en Configuración.'); return; }
+    var cc = state.closureForm.cashCount;
+    var hasCount = cashCountPieces(cc) > 0;
+    sendEmail('Cierre de caja — ' + state.settings.troopName, buildClosureText(closureSales(), state.closureForm, hasCount ? cashCountTotal(cc) : null, cc, closureFund()), e && e.currentTarget);
+  }
+
+  function setPaperWidth(w) { state.paperWidth = w; lsSet('scoutcaja_paper', w); render(); }
+  function printReceipt() { if (state.lastSale) printReceiptSmart(state.lastSale); }
+  function printReport() { doPrint(buildReportHtml(filteredSales(state.report), state.report)); }
+  function reprintSale(id) {
+    var s = state.sales.find(function (x) { return x.id === id; });
+    if (s) printReceiptSmart(s);
+  }
+
+  function setClosureFilter(field, value) { state.closureForm[field] = value; render(); }
+  function closureFund() { var v = parseInt(state.closureForm.startingFund, 10); return isFinite(v) && v > 0 ? v : 0; }
+  function setCashCount(denom, value) {
+    var n = String(value).trim();
+    if (n === '' || parseInt(n, 10) <= 0) delete state.closureForm.cashCount[denom];
+    else state.closureForm.cashCount[denom] = Math.max(0, parseInt(n, 10) || 0);
+    render();
+  }
+  function clearCashCount() { state.closureForm.cashCount = {}; render(); }
+  function closureSales() { return filteredSales(state.closureForm); }
+  function printClosure() {
+    var cc = state.closureForm.cashCount;
+    var hasCount = cashCountPieces(cc) > 0;
+    doPrint(buildClosureHtml(closureSales(), state.closureForm, hasCount ? cashCountTotal(cc) : null, cc, closureFund()));
+  }
+  function saveClosure() {
+    var sales = closureSales();
+    var st = reportStats(sales);
+    var fund = closureFund();
+    var expectedCash = fund + (st.byMethod.efectivo || 0);
+    var cc = state.closureForm.cashCount;
+    var hasCount = cashCountPieces(cc) > 0;
+    var counted = hasCount ? cashCountTotal(cc) : null;
+    var rec = {
+      vendor: state.closureForm.vendor,
+      from: state.closureForm.from,
+      to: state.closureForm.to,
+      salesCount: st.count,
+      startingFund: fund,
+      expectedCash: expectedCash,
+      expectedTransfer: st.byMethod.transferencia || 0,
+      countedCash: counted,
+      cashBreakdown: hasCount ? Object.assign({}, cc) : null,
+      difference: counted == null ? null : counted - expectedCash,
+      closedAt: new Date().toISOString()
+    };
+    if (useDb) { db.collection('closures').add(rec); }
+    else { state.closures.unshift(Object.assign({ id: 'local-' + uid() }, rec)); render(); }
+  }
+
+  // ---------------- render pieces ----------------
+  function emblemSvg() {
+    return '<svg class="emblem" viewBox="0 0 52 52" fill="none" xmlns="http://www.w3.org/2000/svg">' +
+      '<circle cx="26" cy="26" r="24" fill="var(--forest)" stroke="var(--brass)" stroke-width="2.5"/>' +
+      '<g transform="translate(26,26)">' +
+      '<polygon points="0,-15 4,-3 15,0 4,3 0,15 -4,3 -15,0 -4,-3" fill="var(--brass)"/>' +
+      '<circle r="4.5" fill="var(--forest)" stroke="var(--brass)" stroke-width="1.5"/>' +
+      '</g></svg>';
+  }
+
+  function renderHeader() {
+    var s = state.settings;
+    return '' +
+      '<header class="app-header">' +
+      '<div class="brand-group">' +
+      emblemSvg() +
+      '<div class="brand-text">' +
+      '<input class="brand-input name" data-bind="settings.troopName" value="' + esc(s.troopName) + '" aria-label="Nombre de la tropa">' +
+      '<input class="brand-input campaign" data-bind="settings.campaignName" value="' + esc(s.campaignName) + '" aria-label="Nombre de la campaña">' +
+      '</div>' +
+      '</div>' +
+      '<div class="sync-status">' +
+      '<span class="dot ' + (useDb ? 'on' : 'off') + '"></span>' +
+      (useDb ? 'Sincronizado con tu tropa' : 'Modo local (este dispositivo)') +
+      '</div>' +
+      '</header>';
+  }
+
+  function renderTabs() {
+    var tabs = [['vender', 'Vender'], ['productos', 'Productos'], ['reportes', 'Reportes'], ['cierre', 'Cierre de Caja'], ['config', 'Configuración']];
+    return '<nav class="tabbar">' + tabs.map(function (t) {
+      return '<button class="tab-btn' + (state.tab === t[0] ? ' active' : '') + '" data-tab="' + t[0] + '">' + t[1] + '</button>';
+    }).join('') + '</nav>';
+  }
+
+  function renderVender() {
+    if (state.saleJustDone) {
+      return '<div class="sell-layout"><div>' +
+        '<div class="card"><div class="sale-success">' +
+        '<div class="big-check">✅</div><h2>Venta registrada</h2>' +
+        '<p style="color:var(--ink-soft)">Total ' + money(state.lastSaleTotal) + '</p>' +
+        (state.lastSale && state.lastSale.cashReceived != null ? ('' +
+          '<p style="color:var(--ink-soft)">Pagó con ' + money(state.lastSale.cashReceived) + '</p>' +
+          '<p style="font-size:1.2rem"><b>Vuelto: ' + money(state.lastSale.change) + '</b></p>') : '') +
+        '</div></div></div>' +
+        '<div class="cart-panel"><div class="card">' +
+        '<div class="card-title">Recibo</div>' +
+        (state.autoPrint ? '<div style="font-size:0.78rem;color:var(--ink-faint);margin-bottom:0.75rem">🖨 Se imprimió automáticamente (papel ' + state.paperWidth + ' mm)</div>' : '') +
+        '<button class="btn btn-primary btn-block" data-action="print-receipt">🖨 Imprimir recibo</button>' +
+        '<div style="height:0.6rem"></div>' +
+        '<button class="btn btn-block" data-action="new-sale">Nueva venta</button>' +
+        '<div style="font-size:0.75rem;color:var(--ink-faint);margin-top:0.75rem;text-align:center">Ajusta el papel y la impresión automática en <b>Configuración</b></div>' +
+        '</div></div></div>';
+    }
+
+    var items = cartItems();
+    var total = cartTotal();
+    var products = state.products;
+
+    var grid = products.length ? products.map(function (p) {
+      var qty = state.cart[p.id] || 0;
+      var hasStock = p.stock != null;
+      var remaining = hasStock ? Math.max(0, p.stock) : null;
+      var soldOut = hasStock && remaining <= 0;
+      var atLimit = hasStock && qty >= remaining;
+      var stockLine = hasStock ?
+        ('<div class="pstock' + (soldOut ? ' out' : (remaining <= 5 ? ' low' : '')) + '">' + (soldOut ? 'Agotado' : remaining + ' disponibles') + '</div>') :
+        '<div class="pstock">Stock ilimitado</div>';
+      return '<div class="product-card' + (qty ? ' has-qty' : '') + (soldOut ? ' out-of-stock' : '') + '" data-add="' + p.id + '">' +
+        '<div class="pname">' + esc(p.name) + '</div>' +
+        '<div class="pprice mono">' + money(p.price) + '</div>' +
+        stockLine +
+        '<div class="qty-stepper">' +
+        '<button type="button" data-dec="' + p.id + '">−</button>' +
+        '<span class="qty-val">' + qty + '</span>' +
+        '<button type="button" data-inc="' + p.id + '"' + (atLimit ? ' disabled' : '') + '>+</button>' +
+        '</div></div>';
+    }).join('') : '<div class="empty-state">Aún no hay productos. Agrégalos en la pestaña Productos.</div>';
+
+    var cartHtml = items.length ? items.map(function (it) {
+      return '<div class="cart-item">' +
+        '<span class="ci-qty">' + it.qty + '×</span>' +
+        '<span class="ci-name">' + esc(it.name) + '</span>' +
+        '<span class="ci-total mono">' + money(it.total) + '</span>' +
+        '<button class="ci-remove" data-remove="' + it.productId + '" title="Quitar" aria-label="Quitar">✕</button>' +
+        '</div>';
+    }).join('') : '<div class="empty-cart">Toca un producto para agregarlo</div>';
+
+    return '' +
+      '<div class="sell-layout">' +
+      '<div class="card"><div class="card-title">Productos<span class="hint">Toca para agregar</span></div>' +
+      '<div class="product-grid">' + grid + '</div></div>' +
+
+      '<div class="cart-panel"><div class="card">' +
+      '<div class="card-title">Venta actual</div>' +
+      '<div class="field" style="margin-bottom:0.6rem"><label>Vendedor(a)</label>' +
+      '<input type="text" placeholder="Nombre del scout" data-bind-plain="vendorName" value="' + esc(state.vendorName) + '"></div>' +
+      '<div class="cart-list">' + cartHtml + '</div>' +
+      '<div class="cart-total-row"><span>Total</span><span class="amt mono">' + money(total) + '</span></div>' +
+      '<div class="field" style="margin:0.75rem 0 0.5rem"><label>Método de pago</label>' +
+      '<div class="pill-group">' +
+      '<button type="button" class="pill' + (state.payMethod === 'efectivo' ? ' active' : '') + '" data-pay="efectivo">💵 Efectivo</button>' +
+      '<button type="button" class="pill' + (state.payMethod === 'transferencia' ? ' active' : '') + '" data-pay="transferencia">🏦 Transferencia</button>' +
+      '</div></div>' +
+      (state.payMethod === 'efectivo' ? ('' +
+        '<div class="field" style="margin-bottom:0.75rem"><label>Paga con</label>' +
+        '<div class="money-input-wrap"><span class="money-prefix">$</span><input type="text" inputmode="numeric" pattern="[0-9]*" id="cash-received" placeholder="' + total + '" value="' + esc(state.cashReceived) + '"></div>' +
+        '</div>' +
+        (state.cashReceived !== '' ? ('' +
+          '<div class="cart-total-row" style="margin-top:-0.35rem;margin-bottom:0.75rem">' +
+          '<span>Vuelto</span>' +
+          '<span class="amt mono" style="color:' + (cashChange() < 0 ? 'var(--danger)' : 'var(--success)') + '">' + money(cashChange()) + '</span>' +
+          '</div>') : '')
+      ) : '') +
+      '<div class="field" style="margin-bottom:0.75rem"><label>Nota (opcional)</label>' +
+      '<input type="text" placeholder="Ej: comprador, dirección" data-bind-plain="note" value="' + esc(state.note) + '"></div>' +
+      '<button class="btn btn-primary btn-block" data-action="register-sale">Registrar venta</button>' +
+      (state.formError ? '<div class="form-error">' + esc(state.formError) + '</div>' : '') +
+      '</div></div>' +
+      '</div>';
+  }
+
+  function renderProductos() {
+    var rows = state.products.map(function (p) {
+      var confirming = state.confirmDeleteId === p.id;
+      return '<tr>' +
+        '<td><input type="text" class="mono" style="border:1px solid var(--border);background:var(--surface-2);border-radius:6px;padding:0.35rem 0.5rem;width:100%" data-prod-name="' + p.id + '" value="' + esc(p.name) + '"></td>' +
+        '<td class="num" style="width:130px"><input type="number" min="0" step="100" class="mono" style="border:1px solid var(--border);background:var(--surface-2);border-radius:6px;padding:0.35rem 0.5rem;width:100%;text-align:right" data-prod-price="' + p.id + '" value="' + p.price + '"></td>' +
+        '<td class="num" style="width:110px"><input type="number" min="0" step="1" placeholder="∞" class="mono" style="border:1px solid var(--border);background:var(--surface-2);border-radius:6px;padding:0.35rem 0.5rem;width:100%;text-align:right" data-prod-stock="' + p.id + '" value="' + (p.stock == null ? '' : p.stock) + '"></td>' +
+        '<td style="width:110px">' +
+        (confirming ?
+          '<div class="inline-confirm"><span style="font-size:0.78rem">¿Eliminar?</span><button class="btn btn-danger btn-sm" data-confirm-del="' + p.id + '">Sí</button><button class="btn btn-sm" data-cancel-del="1">No</button></div>' :
+          '<button class="icon-btn" title="Eliminar" data-ask-del="' + p.id + '">🗑</button>') +
+        '</td></tr>';
+    }).join('') || '<tr><td colspan="4" class="empty-state">Sin productos todavía.</td></tr>';
+
+    return '' +
+      '<div class="card">' +
+      '<div class="card-title">Catálogo de productos<span class="hint">Deja el stock vacío para venta ilimitada</span></div>' +
+      '<div class="table-scroll"><table class="data-table">' +
+      '<thead><tr><th>Producto</th><th class="num">Precio</th><th class="num">Stock</th><th></th></tr></thead>' +
+      '<tbody>' + rows + '</tbody></table></div>' +
+      '<hr style="border:none;border-top:1px dashed var(--border);margin:1rem 0">' +
+      '<div class="row" style="align-items:flex-end">' +
+      '<div class="field grow"><label>Nuevo producto</label><input type="text" placeholder="Ej: Chocolates de Tropa" id="new-prod-name" value="' + esc(state.newProductName) + '"></div>' +
+      '<div class="field" style="max-width:130px"><label>Precio (CLP)</label><input type="number" min="0" step="100" id="new-prod-price" value="' + esc(state.newProductPrice) + '"></div>' +
+      '<div class="field" style="max-width:110px"><label>Stock</label><input type="number" min="0" step="1" placeholder="∞" id="new-prod-stock" value="' + esc(state.newProductStock) + '"></div>' +
+      '<button class="btn btn-brass" data-action="add-product">+ Agregar</button>' +
+      '</div>' +
+      '</div>';
+  }
+
+  function renderReportes() {
+    var f = state.report;
+    var sales = filteredSales(f);
+    var st = reportStats(sales);
+    var vendors = vendorList();
+    var prodRows = Object.keys(st.byProduct).sort(function (a, b) { return st.byProduct[b].total - st.byProduct[a].total; })
+      .map(function (name) { var p = st.byProduct[name]; return '<tr><td>' + esc(name) + '</td><td class="num">' + p.qty + '</td><td class="num mono">' + money(p.total) + '</td></tr>'; }).join('') ||
+      '<tr><td colspan="3" class="empty-state">Sin datos</td></tr>';
+
+    var txRows = sales.map(function (s) {
+      var itemsSummary = s.items.map(function (it) { return it.qty + '× ' + it.name; }).join(', ');
+      return '<tr><td class="mono">' + saleLabel(s) + '</td><td>' + fmtDate(s.createdAt) + '</td><td>' + esc(s.vendorName) + '</td><td>' + esc(itemsSummary) + '</td>' +
+        '<td><span class="badge ' + (s.paymentMethod === 'efectivo' ? 'cash' : 'transfer') + '">' + (s.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia') + '</span></td>' +
+        '<td class="num mono">' + money(s.total) + '</td>' +
+        '<td style="white-space:nowrap">' +
+        '<button class="icon-btn" title="Reimprimir" data-reprint="' + s.id + '">🖨</button> ' +
+        (state.confirmDeleteId === s.id ?
+          '<span class="inline-confirm"><button class="btn btn-danger btn-sm" data-confirm-delsale="' + s.id + '">Anular</button><button class="btn btn-sm" data-cancel-del="1">No</button></span>' :
+          '<button class="icon-btn" title="Anular venta" data-ask-delsale="' + s.id + '">✕</button>') +
+        '</td></tr>';
+    }).join('') || '<tr><td colspan="7" class="empty-state">No hay transacciones en este período.</td></tr>';
+
+    return '' +
+      '<div class="card">' +
+      '<div class="card-title">Filtros<span><button class="btn btn-brass btn-sm" data-action="print-report">🖨 Imprimir reporte</button> <button class="btn btn-ghost btn-sm" data-action="email-report">✉️ Enviar por correo</button></span></div>' +
+      '<div class="row">' +
+      '<div class="field"><label>Vendedor(a)</label><select id="report-vendor">' +
+      '<option value="all"' + (f.vendor === 'all' ? ' selected' : '') + '>Todos</option>' +
+      vendors.map(function (v) { return '<option value="' + esc(v) + '"' + (f.vendor === v ? ' selected' : '') + '>' + esc(v) + '</option>'; }).join('') +
+      '</select></div>' +
+      '<div class="field"><label>Desde</label><input type="date" id="report-from" value="' + f.from + '"></div>' +
+      '<div class="field"><label>Hasta</label><input type="date" id="report-to" value="' + f.to + '"></div>' +
+      '<div class="field"><label>Atajos</label><div class="pill-group">' +
+      '<button type="button" class="pill' + (f.scope === 'today' ? ' active' : '') + '" data-quick="today">Hoy</button>' +
+      '<button type="button" class="pill' + (f.scope === 'all' ? ' active' : '') + '" data-quick="all">Todo</button>' +
+      '</div></div>' +
+      '</div></div>' +
+
+      '<div class="stat-grid">' +
+      '<div class="stat-tile accent"><div class="label">Total recaudado</div><div class="value mono">' + money(st.total) + '</div></div>' +
+      '<div class="stat-tile"><div class="label">Transacciones</div><div class="value mono">' + st.count + '</div></div>' +
+      '<div class="stat-tile"><div class="label">Unidades vendidas</div><div class="value mono">' + st.units + '</div></div>' +
+      '<div class="stat-tile"><div class="label">Ticket promedio</div><div class="value mono">' + money(st.count ? st.total / st.count : 0) + '</div></div>' +
+      '</div>' +
+
+      '<div class="card"><div class="card-title">Ventas por producto</div>' +
+      '<div class="table-scroll"><table class="data-table"><thead><tr><th>Producto</th><th class="num">Cant.</th><th class="num">Total</th></tr></thead><tbody>' + prodRows + '</tbody></table></div></div>' +
+
+      '<div class="card"><div class="card-title">Transacciones</div>' +
+      '<div class="table-scroll"><table class="data-table"><thead><tr><th>N°</th><th>Fecha</th><th>Vendedor(a)</th><th>Detalle</th><th>Método</th><th class="num">Total</th><th></th></tr></thead><tbody>' + txRows + '</tbody></table></div></div>';
+  }
+
+  function renderCierre() {
+    var f = state.closureForm;
+    var sales = closureSales();
+    var st = reportStats(sales);
+    var fund = closureFund();
+    var salesCash = st.byMethod.efectivo || 0;
+    var expectedCash = fund + salesCash;
+    var expectedTransfer = st.byMethod.transferencia || 0;
+    var cc = f.cashCount || {};
+    var hasCount = cashCountPieces(cc) > 0;
+    var counted = hasCount ? cashCountTotal(cc) : null;
+    var diff = counted == null ? null : counted - expectedCash;
+    var vendors = vendorList();
+
+    var cashRows = CASH_DENOMS.map(function (d) {
+      var qty = cc[d] || '';
+      var sub = (cc[d] || 0) * d;
+      return '<div class="cash-row">' +
+        '<span class="cash-label mono">' + money(d) + '</span>' +
+        '<span class="cash-x">×</span>' +
+        '<input type="number" min="0" step="1" data-cash-denom="' + d + '" value="' + qty + '" placeholder="0">' +
+        '<span class="cash-sub mono">' + (sub ? money(sub) : '') + '</span>' +
+        '</div>';
+    }).join('');
+
+    var histRows = state.closures.map(function (c) {
+      var range = c.from === c.to ? c.from : c.from + ' – ' + c.to;
+      return '<tr><td>' + fmtDate(c.closedAt) + '</td><td>' + (c.vendor === 'all' ? 'Todos' : esc(c.vendor)) + '</td><td>' + esc(range) + '</td>' +
+        '<td class="num mono">' + money(c.expectedCash + c.expectedTransfer) + '</td>' +
+        '<td class="num mono">' + (c.difference == null ? '—' : money(c.difference)) + '</td></tr>';
+    }).join('') || '<tr><td colspan="5" class="empty-state">Sin cierres registrados.</td></tr>';
+
+    return '' +
+      '<div class="card">' +
+      '<div class="card-title">Cierre de caja</div>' +
+      '<div class="row">' +
+      '<div class="field"><label>Vendedor(a)</label><select id="closure-vendor">' +
+      '<option value="all"' + (f.vendor === 'all' ? ' selected' : '') + '>Todos</option>' +
+      vendors.map(function (v) { return '<option value="' + esc(v) + '"' + (f.vendor === v ? ' selected' : '') + '>' + esc(v) + '</option>'; }).join('') +
+      '</select></div>' +
+      '<div class="field"><label>Desde</label><input type="date" id="closure-from" value="' + f.from + '"></div>' +
+      '<div class="field"><label>Hasta</label><input type="date" id="closure-to" value="' + f.to + '"></div>' +
+      '<div class="field"><label>Fondo de inicio</label>' +
+      '<div class="money-input-wrap"><span class="money-prefix">$</span><input type="number" min="0" step="100" id="closure-fund" placeholder="0" value="' + esc(f.startingFund) + '"></div>' +
+      (fund > 0 ? '<div class="money-preview mono">' + money(fund) + '</div>' : '') +
+      '</div>' +
+      '</div>' +
+      '<div style="font-size:0.75rem;color:var(--ink-faint);margin-top:0.4rem">Fondo de inicio: el efectivo con el que partió la caja para dar vueltos, antes de vender.</div>' +
+      '<div class="stat-grid" style="margin-top:0.9rem">' +
+      '<div class="stat-tile"><div class="label">Ventas</div><div class="value mono">' + st.count + '</div></div>' +
+      '<div class="stat-tile"><div class="label">Fondo + ventas efectivo</div><div class="value mono">' + money(fund) + ' + ' + money(salesCash) + '</div></div>' +
+      '<div class="stat-tile"><div class="label">Transferencia esperada</div><div class="value mono">' + money(expectedTransfer) + '</div></div>' +
+      '<div class="stat-tile accent"><div class="label">Efectivo esperado en caja</div><div class="value mono">' + money(expectedCash) + '</div></div>' +
+      '</div>' +
+      '<div class="card-title" style="margin-top:1.1rem">Contar efectivo<span class="hint">Ingresa cuántos billetes y monedas de cada tipo hay</span></div>' +
+      '<div class="cash-grid">' + cashRows + '</div>' +
+      '<div class="cash-total-row">' +
+      '<div><div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--ink-faint);font-weight:600">Efectivo contado</div>' +
+      '<span class="amt mono">' + (hasCount ? money(counted) : '—') + '</span></div>' +
+      '<div style="text-align:right"><div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--ink-faint);font-weight:600">Diferencia</div>' +
+      '<span class="amt mono" style="color:' + (diff == null ? 'var(--ink-faint)' : (diff < 0 ? 'var(--danger)' : 'var(--success)')) + '">' + (diff == null ? '—' : money(diff)) + '</span></div>' +
+      '</div>' +
+      '<div class="row" style="margin-top:0.7rem">' +
+      '<button class="btn btn-ghost btn-sm" data-action="clear-cash">Limpiar conteo</button>' +
+      '</div>' +
+      '<div class="row" style="margin-top:0.7rem">' +
+      '<button class="btn btn-primary" data-action="save-closure">Registrar cierre</button>' +
+      '<button class="btn btn-brass" data-action="print-closure">🖨 Imprimir cierre</button>' +
+      '<button class="btn btn-ghost" data-action="email-closure">✉️ Enviar por correo</button>' +
+      '</div>' +
+      '</div>' +
+
+      '<div class="card"><div class="card-title">Historial de cierres</div>' +
+      '<div class="table-scroll"><table class="data-table"><thead><tr><th>Fecha</th><th>Vendedor(a)</th><th>Período</th><th class="num">Total</th><th class="num">Diferencia</th></tr></thead><tbody>' + histRows + '</tbody></table></div></div>';
+  }
+
+  function renderConfig() {
+    var s = state.settings;
+    return '' +
+      '<div class="card">' +
+      '<div class="card-title">Impresión</div>' +
+      '<div class="field" style="margin-bottom:0.9rem;max-width:320px"><label>Ancho de papel del recibo</label>' +
+      '<div class="pill-group">' +
+      '<button type="button" class="pill' + (state.paperWidth === '58' ? ' active' : '') + '" data-paper="58">58 mm (térmica angosta)</button>' +
+      '<button type="button" class="pill' + (state.paperWidth === '80' ? ' active' : '') + '" data-paper="80">80 mm (térmica ancha)</button>' +
+      '</div></div>' +
+      '<label style="display:flex;align-items:flex-start;gap:0.6rem;font-size:0.9rem;cursor:pointer;max-width:420px">' +
+      '<input type="checkbox" id="auto-print-toggle"' + (state.autoPrint ? ' checked' : '') + ' style="width:auto;margin-top:0.2rem">' +
+      '<span>Imprimir recibo automáticamente al registrar cada venta<br>' +
+      '<span style="font-size:0.78rem;color:var(--ink-faint)">Actívalo solo si el puesto tiene una impresora conectada; si no, deja el recibo listo para imprimir cuando quieras.</span></span>' +
+      '</label>' +
+      '</div>' +
+
+      '<div class="card">' +
+      '<div class="card-title">Impresora Bluetooth (sin diálogo de imprimir)</div>' +
+      (state.btPrinterName && btCharacteristic ? ('' +
+        '<div style="font-size:0.9rem;margin-bottom:0.7rem">🖨 Conectada: <b>' + esc(state.btPrinterName) + '</b>. Los recibos se imprimen directo, sin abrir ningún diálogo.</div>' +
+        '<button class="btn btn-ghost btn-sm" data-action="disconnect-printer">Desconectar</button>'
+      ) : ('' +
+        '<div style="font-size:0.82rem;color:var(--ink-faint);margin-bottom:0.7rem">Solo funciona con impresoras térmicas Bluetooth de bajo consumo (BLE), en Chrome (Android o computador) — no funciona en iPhone/Safari. Enciende la impresora antes de tocar el botón.</div>' +
+        '<button class="btn btn-primary btn-sm" data-action="connect-printer"' + (state.btConnecting ? ' disabled' : '') + '>' + (state.btConnecting ? 'Buscando…' : '🔗 Conectar impresora') + '</button>' +
+        (state.btError ? '<div style="color:var(--danger);font-size:0.82rem;margin-top:0.6rem">' + esc(state.btError) + '</div>' : '')
+      )) +
+      '</div>' +
+
+      '<div class="card">' +
+      '<div class="card-title">Datos de la tropa</div>' +
+      '<div class="row">' +
+      '<div class="field"><label>Nombre de la tropa</label><input type="text" data-bind="settings.troopName" value="' + esc(s.troopName) + '"></div>' +
+      '<div class="field"><label>Campaña</label><input type="text" data-bind="settings.campaignName" value="' + esc(s.campaignName) + '"></div>' +
+      '</div>' +
+      '<div style="font-size:0.78rem;color:var(--ink-faint);margin-top:0.6rem">También puedes editarlos directamente en el encabezado de la app.</div>' +
+      '</div>' +
+
+      '<div class="card">' +
+      '<div class="card-title">Envío por correo</div>' +
+      '<div class="row">' +
+      '<div class="field"><label>Correo de destino</label><input type="email" placeholder="correo@ejemplo.com" data-bind="settings.notifyEmail" value="' + esc(s.notifyEmail || '') + '"></div>' +
+      '</div>' +
+      '<div style="font-size:0.78rem;color:var(--ink-faint);margin-top:0.6rem">' +
+      (appsScriptReady ?
+        'Envío automático activado ✅: al presionar "Enviar por correo" se manda directo desde tu Gmail, sin pasos extra.' :
+        'Cada persona puede dejar aquí su propio correo. Por ahora, "Enviar por correo" abre tu app de correo para enviarlo tú manualmente (para que se envíe automático desde tu Gmail, hay que conectar un Google Apps Script — ver el README).') +
+      '</div>' +
+      '</div>' +
+
+      '<div class="card">' +
+      '<div class="card-title">Guardar y app</div>' +
+      '<div class="row" style="align-items:center">' +
+      '<button class="btn btn-primary" data-action="save-config">💾 Guardar cambios</button>' +
+      (state.isStandalone ? '' :
+        '<button class="btn btn-brass" data-action="install-app">📲 Instalar app</button>') +
+      '</div>' +
+      (state.settingsSaveMsg ? '<div style="font-size:0.82rem;color:var(--success);margin-top:0.6rem">' + esc(state.settingsSaveMsg) + '</div>' : '') +
+      '<div style="font-size:0.78rem;color:var(--ink-faint);margin-top:0.6rem">' +
+      (state.isStandalone ?
+        'Ya tienes la app instalada en este dispositivo ✅' :
+        'Instálala en tu celular o computador para abrirla como una app normal, con su propio ícono, sin tener que buscar el link cada vez.') +
+      '</div>' +
+      '</div>' +
+
+      '<div class="card" style="border-color:var(--danger)">' +
+      '<div class="card-title" style="color:var(--danger)">⚠️ Zona de peligro</div>' +
+      (!state.confirmDeleteAll ? ('' +
+        '<div style="font-size:0.85rem;color:var(--ink-soft);margin-bottom:0.8rem">Borra todas las ventas y cierres registrados (por ejemplo, para empezar limpio una nueva campaña). El catálogo de productos y la configuración de la tropa NO se borran.</div>' +
+        '<button class="btn btn-danger" data-action="ask-delete-all">🗑 Eliminar todos los registros</button>'
+      ) : ('' +
+        '<div style="font-size:0.9rem;color:var(--danger);font-weight:600;margin-bottom:0.8rem">¿Seguro? Esto va a borrar TODAS las ventas y cierres de todos los vendedores, para siempre. No se puede deshacer.</div>' +
+        '<div class="row">' +
+        '<button class="btn btn-danger" data-action="confirm-delete-all"' + (state.deletingAll ? ' disabled' : '') + '>' + (state.deletingAll ? 'Eliminando…' : 'Sí, eliminar todo') + '</button>' +
+        '<button class="btn btn-ghost" data-action="cancel-delete-all"' + (state.deletingAll ? ' disabled' : '') + '>Cancelar</button>' +
+        '</div>'
+      )) +
+      '</div>';
+  }
+
+  function renderApp() {
+    var body;
+    if (state.tab === 'vender') body = renderVender();
+    else if (state.tab === 'productos') body = renderProductos();
+    else if (state.tab === 'reportes') body = renderReportes();
+    else if (state.tab === 'cierre') body = renderCierre();
+    else body = renderConfig();
+
+    return renderHeader() + renderTabs() + '<section class="panel active">' + body + '</section>';
+  }
+
+  // ---------------- events ----------------
+  function bindEvents() {
+    App.querySelectorAll('[data-tab]').forEach(function (el) {
+      el.addEventListener('click', function () { setTab(el.getAttribute('data-tab')); });
+    });
+    App.querySelectorAll('[data-add]').forEach(function (el) {
+      el.addEventListener('click', function (e) {
+        if (e.target.closest('.qty-stepper')) return;
+        addQty(el.getAttribute('data-add'), 1);
+      });
+    });
+    App.querySelectorAll('[data-inc]').forEach(function (el) { el.addEventListener('click', function () { addQty(el.getAttribute('data-inc'), 1); }); });
+    App.querySelectorAll('[data-dec]').forEach(function (el) { el.addEventListener('click', function () { addQty(el.getAttribute('data-dec'), -1); }); });
+    App.querySelectorAll('[data-remove]').forEach(function (el) { el.addEventListener('click', function () { delete state.cart[el.getAttribute('data-remove')]; render(); }); });
+    App.querySelectorAll('[data-pay]').forEach(function (el) { el.addEventListener('click', function () { setPayMethod(el.getAttribute('data-pay')); }); });
+    var cashReceivedInput = document.getElementById('cash-received');
+    if (cashReceivedInput) cashReceivedInput.addEventListener('input', function (e) {
+      var digits = e.target.value.replace(/[^0-9]/g, '');
+      if (digits !== e.target.value) e.target.value = digits;
+      setCashReceived(digits);
+    });
+
+    var vendorInput = App.querySelector('[data-bind-plain="vendorName"]');
+    if (vendorInput) vendorInput.addEventListener('input', function (e) { setVendor(e.target.value); });
+    var noteInput = App.querySelector('[data-bind-plain="note"]');
+    if (noteInput) noteInput.addEventListener('input', function (e) { setNote(e.target.value); });
+
+    App.querySelectorAll('[data-bind]').forEach(function (el) {
+      el.addEventListener('change', function (e) {
+        var path = el.getAttribute('data-bind').split('.');
+        saveSettings(path[1], e.target.value);
+      });
+    });
+
+    var regBtn = App.querySelector('[data-action="register-sale"]');
+    if (regBtn) regBtn.addEventListener('click', registerSale);
+    var printReceiptBtn = App.querySelector('[data-action="print-receipt"]');
+    if (printReceiptBtn) printReceiptBtn.addEventListener('click', printReceipt);
+    var newSaleBtn = App.querySelector('[data-action="new-sale"]');
+    if (newSaleBtn) newSaleBtn.addEventListener('click', newSale);
+    App.querySelectorAll('[data-paper]').forEach(function (el) { el.addEventListener('click', function () { setPaperWidth(el.getAttribute('data-paper')); }); });
+    var autoPrintToggle = document.getElementById('auto-print-toggle');
+    if (autoPrintToggle) autoPrintToggle.addEventListener('change', function (e) { setAutoPrint(e.target.checked); });
+
+    var addProdBtn = App.querySelector('[data-action="add-product"]');
+    if (addProdBtn) addProdBtn.addEventListener('click', function () {
+      state.newProductName = document.getElementById('new-prod-name').value;
+      state.newProductPrice = document.getElementById('new-prod-price').value;
+      state.newProductStock = document.getElementById('new-prod-stock').value;
+      addProduct();
+    });
+    App.querySelectorAll('[data-prod-name]').forEach(function (el) {
+      el.addEventListener('change', function (e) { updateProduct(el.getAttribute('data-prod-name'), 'name', e.target.value); });
+    });
+    App.querySelectorAll('[data-prod-price]').forEach(function (el) {
+      el.addEventListener('change', function (e) { updateProduct(el.getAttribute('data-prod-price'), 'price', e.target.value); });
+    });
+    App.querySelectorAll('[data-prod-stock]').forEach(function (el) {
+      el.addEventListener('change', function (e) { updateProduct(el.getAttribute('data-prod-stock'), 'stock', e.target.value); });
+    });
+    App.querySelectorAll('[data-ask-del]').forEach(function (el) { el.addEventListener('click', function () { state.confirmDeleteId = el.getAttribute('data-ask-del'); render(); }); });
+    App.querySelectorAll('[data-confirm-del]').forEach(function (el) { el.addEventListener('click', function () { deleteProduct(el.getAttribute('data-confirm-del')); render(); }); });
+    App.querySelectorAll('[data-cancel-del]').forEach(function (el) { el.addEventListener('click', function () { state.confirmDeleteId = null; render(); }); });
+
+    App.querySelectorAll('[data-ask-delsale]').forEach(function (el) { el.addEventListener('click', function () { state.confirmDeleteId = el.getAttribute('data-ask-delsale'); render(); }); });
+    App.querySelectorAll('[data-confirm-delsale]').forEach(function (el) { el.addEventListener('click', function () { deleteSale(el.getAttribute('data-confirm-delsale')); render(); }); });
+    App.querySelectorAll('[data-reprint]').forEach(function (el) { el.addEventListener('click', function () { reprintSale(el.getAttribute('data-reprint')); }); });
+
+    var rv = document.getElementById('report-vendor'); if (rv) rv.addEventListener('change', function (e) { setReportFilter('vendor', e.target.value); });
+    var rf = document.getElementById('report-from'); if (rf) rf.addEventListener('change', function (e) { setReportFilter('from', e.target.value); });
+    var rt = document.getElementById('report-to'); if (rt) rt.addEventListener('change', function (e) { setReportFilter('to', e.target.value); });
+    App.querySelectorAll('[data-quick]').forEach(function (el) { el.addEventListener('click', function () { quickRange(el.getAttribute('data-quick')); }); });
+    var prBtn = App.querySelector('[data-action="print-report"]'); if (prBtn) prBtn.addEventListener('click', printReport);
+    var erBtn = App.querySelector('[data-action="email-report"]'); if (erBtn) erBtn.addEventListener('click', emailReport);
+
+    var cv = document.getElementById('closure-vendor'); if (cv) cv.addEventListener('change', function (e) { setClosureFilter('vendor', e.target.value); });
+    var cf = document.getElementById('closure-from'); if (cf) cf.addEventListener('change', function (e) { setClosureFilter('from', e.target.value); });
+    var ct = document.getElementById('closure-to'); if (ct) ct.addEventListener('change', function (e) { setClosureFilter('to', e.target.value); });
+    var cfund = document.getElementById('closure-fund'); if (cfund) cfund.addEventListener('input', function (e) { setClosureFilter('startingFund', e.target.value); });
+    App.querySelectorAll('[data-cash-denom]').forEach(function (el) {
+      el.addEventListener('input', function (e) { setCashCount(el.getAttribute('data-cash-denom'), e.target.value); });
+    });
+    var clearCashBtn = App.querySelector('[data-action="clear-cash"]'); if (clearCashBtn) clearCashBtn.addEventListener('click', clearCashCount);
+    var saveClosureBtn = App.querySelector('[data-action="save-closure"]'); if (saveClosureBtn) saveClosureBtn.addEventListener('click', saveClosure);
+    var printClosureBtn = App.querySelector('[data-action="print-closure"]'); if (printClosureBtn) printClosureBtn.addEventListener('click', printClosure);
+    var ecBtn = App.querySelector('[data-action="email-closure"]'); if (ecBtn) ecBtn.addEventListener('click', emailClosure);
+    var saveConfigBtn = App.querySelector('[data-action="save-config"]'); if (saveConfigBtn) saveConfigBtn.addEventListener('click', saveAllSettings);
+    var installBtn = App.querySelector('[data-action="install-app"]'); if (installBtn) installBtn.addEventListener('click', installApp);
+    var askDeleteAllBtn = App.querySelector('[data-action="ask-delete-all"]'); if (askDeleteAllBtn) askDeleteAllBtn.addEventListener('click', askDeleteAll);
+    var confirmDeleteAllBtn = App.querySelector('[data-action="confirm-delete-all"]'); if (confirmDeleteAllBtn) confirmDeleteAllBtn.addEventListener('click', deleteAllRecords);
+    var cancelDeleteAllBtn = App.querySelector('[data-action="cancel-delete-all"]'); if (cancelDeleteAllBtn) cancelDeleteAllBtn.addEventListener('click', cancelDeleteAll);
+    var connectPrinterBtn = App.querySelector('[data-action="connect-printer"]'); if (connectPrinterBtn) connectPrinterBtn.addEventListener('click', connectPrinter);
+    var disconnectPrinterBtn = App.querySelector('[data-action="disconnect-printer"]'); if (disconnectPrinterBtn) disconnectPrinterBtn.addEventListener('click', disconnectPrinter);
+  }
+
+  window.addEventListener('beforeunload', function (e) {
+    e.preventDefault();
+    e.returnValue = '';
+    return '';
+  });
+
+  // ---------------- instalar como app (PWA) ----------------
+  var deferredInstallPrompt = null;
+  window.addEventListener('beforeinstallprompt', function (e) {
+    e.preventDefault();
+    deferredInstallPrompt = e;
+    state.canInstall = true;
+    render();
+  });
+  window.addEventListener('appinstalled', function () {
+    deferredInstallPrompt = null;
+    state.canInstall = false;
+    render();
+  });
+
+  function installApp() {
+    if (deferredInstallPrompt) {
+      deferredInstallPrompt.prompt();
+      deferredInstallPrompt.userChoice.then(function () {
+        deferredInstallPrompt = null;
+        state.canInstall = false;
+        render();
+      });
+      return;
+    }
+    if (state.isIOS) {
+      alert('Para instalar en iPhone/iPad: toca el botón Compartir (el cuadrado con la flecha hacia arriba) en Safari, y elige "Agregar a pantalla de inicio".');
+    } else {
+      alert('Tu navegador todavía no ofrece instalar la app (puede que ya esté instalada, o que este navegador no lo soporte). Prueba desde el menú (⋮) del navegador, buscando "Instalar app" o "Agregar a pantalla de inicio".');
+    }
+  }
+
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('sw.js').catch(function (err) { console.error('No se pudo registrar el service worker', err); });
+    });
+  }
+
+  // ---------------- guardar configuración ----------------
+  function saveAllSettings() {
+    if (useDb) {
+      db.doc('settings/config').set(state.settings).then(function () {
+        state.settingsSaveMsg = 'Guardado ✅';
+        render();
+        setTimeout(function () { state.settingsSaveMsg = ''; render(); }, 2500);
+      }).catch(function () {
+        state.settingsSaveMsg = 'No se pudo guardar. Revisa tu conexión.';
+        render();
+      });
+    } else {
+      state.settingsSaveMsg = 'Guardado localmente (sin Firebase conectado).';
+      render();
+      setTimeout(function () { state.settingsSaveMsg = ''; render(); }, 2500);
+    }
+  }
+
+  // ---------------- eliminar todos los registros ----------------
+  function askDeleteAll() { state.confirmDeleteAll = true; render(); }
+  function cancelDeleteAll() { state.confirmDeleteAll = false; render(); }
+
+  function deleteCollectionInBatches(collectionName) {
+    return db.collection(collectionName).get().then(function (qs) {
+      if (qs.empty) return;
+      var docs = qs.docs;
+      var chunks = [];
+      for (var i = 0; i < docs.length; i += 400) chunks.push(docs.slice(i, i + 400));
+      var chain = Promise.resolve();
+      chunks.forEach(function (chunk) {
+        chain = chain.then(function () {
+          var batch = db.batch();
+          chunk.forEach(function (doc) { batch.delete(doc.ref); });
+          return batch.commit();
+        });
+      });
+      return chain;
+    });
+  }
+
+  function deleteAllRecords() {
+    if (!useDb) {
+      state.sales = [];
+      state.closures = [];
+      state.confirmDeleteAll = false;
+      render();
+      alert('Se eliminaron todos los registros (modo local).');
+      return;
+    }
+    state.deletingAll = true;
+    render();
+    deleteCollectionInBatches('sales')
+      .then(function () { return deleteCollectionInBatches('closures'); })
+      .then(function () { return db.doc('counters/sales').set({ value: 0 }); })
+      .then(function () {
+        state.deletingAll = false;
+        state.confirmDeleteAll = false;
+        render();
+        alert('Listo: se eliminaron todas las ventas y cierres registrados. El catálogo de productos y la configuración se mantuvieron.');
+      })
+      .catch(function (err) {
+        console.error(err);
+        state.deletingAll = false;
+        render();
+        alert('Ocurrió un error al eliminar. Revisa tu conexión e intenta de nuevo.');
+      });
+  }
+
+  var App = document.getElementById('app');
+  render();
+  connectDb();
+})();
+</script>
+
+</body>
+</html>
