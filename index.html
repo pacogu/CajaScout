@@ -405,6 +405,8 @@
     isIOS: /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream,
     isStandalone: (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true,
     settingsSaveMsg: '',
+    confirmDeleteAll: false,
+    deletingAll: false,
     note: '',
     lastSale: null,
     lastSaleTotal: 0,
@@ -1281,6 +1283,20 @@
         'Ya tienes la app instalada en este dispositivo ✅' :
         'Instálala en tu celular o computador para abrirla como una app normal, con su propio ícono, sin tener que buscar el link cada vez.') +
       '</div>' +
+      '</div>' +
+
+      '<div class="card" style="border-color:var(--danger)">' +
+      '<div class="card-title" style="color:var(--danger)">⚠️ Zona de peligro</div>' +
+      (!state.confirmDeleteAll ? ('' +
+        '<div style="font-size:0.85rem;color:var(--ink-soft);margin-bottom:0.8rem">Borra todas las ventas y cierres registrados (por ejemplo, para empezar limpio una nueva campaña). El catálogo de productos y la configuración de la tropa NO se borran.</div>' +
+        '<button class="btn btn-danger" data-action="ask-delete-all">🗑 Eliminar todos los registros</button>'
+      ) : ('' +
+        '<div style="font-size:0.9rem;color:var(--danger);font-weight:600;margin-bottom:0.8rem">¿Seguro? Esto va a borrar TODAS las ventas y cierres de todos los vendedores, para siempre. No se puede deshacer.</div>' +
+        '<div class="row">' +
+        '<button class="btn btn-danger" data-action="confirm-delete-all"' + (state.deletingAll ? ' disabled' : '') + '>' + (state.deletingAll ? 'Eliminando…' : 'Sí, eliminar todo') + '</button>' +
+        '<button class="btn btn-ghost" data-action="cancel-delete-all"' + (state.deletingAll ? ' disabled' : '') + '>Cancelar</button>' +
+        '</div>'
+      )) +
       '</div>';
   }
 
@@ -1383,6 +1399,9 @@
     var ecBtn = App.querySelector('[data-action="email-closure"]'); if (ecBtn) ecBtn.addEventListener('click', emailClosure);
     var saveConfigBtn = App.querySelector('[data-action="save-config"]'); if (saveConfigBtn) saveConfigBtn.addEventListener('click', saveAllSettings);
     var installBtn = App.querySelector('[data-action="install-app"]'); if (installBtn) installBtn.addEventListener('click', installApp);
+    var askDeleteAllBtn = App.querySelector('[data-action="ask-delete-all"]'); if (askDeleteAllBtn) askDeleteAllBtn.addEventListener('click', askDeleteAll);
+    var confirmDeleteAllBtn = App.querySelector('[data-action="confirm-delete-all"]'); if (confirmDeleteAllBtn) confirmDeleteAllBtn.addEventListener('click', deleteAllRecords);
+    var cancelDeleteAllBtn = App.querySelector('[data-action="cancel-delete-all"]'); if (cancelDeleteAllBtn) cancelDeleteAllBtn.addEventListener('click', cancelDeleteAll);
   }
 
   window.addEventListener('beforeunload', function (e) {
@@ -1444,6 +1463,56 @@
       render();
       setTimeout(function () { state.settingsSaveMsg = ''; render(); }, 2500);
     }
+  }
+
+  // ---------------- eliminar todos los registros ----------------
+  function askDeleteAll() { state.confirmDeleteAll = true; render(); }
+  function cancelDeleteAll() { state.confirmDeleteAll = false; render(); }
+
+  function deleteCollectionInBatches(collectionName) {
+    return db.collection(collectionName).get().then(function (qs) {
+      if (qs.empty) return;
+      var docs = qs.docs;
+      var chunks = [];
+      for (var i = 0; i < docs.length; i += 400) chunks.push(docs.slice(i, i + 400));
+      var chain = Promise.resolve();
+      chunks.forEach(function (chunk) {
+        chain = chain.then(function () {
+          var batch = db.batch();
+          chunk.forEach(function (doc) { batch.delete(doc.ref); });
+          return batch.commit();
+        });
+      });
+      return chain;
+    });
+  }
+
+  function deleteAllRecords() {
+    if (!useDb) {
+      state.sales = [];
+      state.closures = [];
+      state.confirmDeleteAll = false;
+      render();
+      alert('Se eliminaron todos los registros (modo local).');
+      return;
+    }
+    state.deletingAll = true;
+    render();
+    deleteCollectionInBatches('sales')
+      .then(function () { return deleteCollectionInBatches('closures'); })
+      .then(function () { return db.doc('counters/sales').set({ value: 0 }); })
+      .then(function () {
+        state.deletingAll = false;
+        state.confirmDeleteAll = false;
+        render();
+        alert('Listo: se eliminaron todas las ventas y cierres registrados. El catálogo de productos y la configuración se mantuvieron.');
+      })
+      .catch(function (err) {
+        console.error(err);
+        state.deletingAll = false;
+        render();
+        alert('Ocurrió un error al eliminar. Revisa tu conexión e intenta de nuevo.');
+      });
   }
 
   var App = document.getElementById('app');
