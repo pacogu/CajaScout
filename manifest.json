@@ -1,0 +1,14 @@
+{
+  "name": "Caja Scout",
+  "short_name": "Caja Scout",
+  "description": "App de ventas y cierre de caja para campañas scout",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f1efe2",
+  "theme_color": "#2f4a3c",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
