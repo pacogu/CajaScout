@@ -406,6 +406,8 @@
     isStandalone: (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true,
     settingsSaveMsg: '',
     confirmDeleteAll: false,
+    confirmBulkDeleteReport: false,
+    bulkDeletingReport: false,
     btPrinterName: lsGet('scoutcaja_bt_printer_name', ''),
     btConnecting: false,
     btError: '',
@@ -620,6 +622,12 @@
     state.confirmDeleteId = null;
   }
 
+  function deleteClosure(id) {
+    if (useDb) { db.doc('closures/' + id).delete(); }
+    else { state.closures = state.closures.filter(function (x) { return x.id !== id; }); render(); }
+    state.confirmDeleteId = null;
+  }
+
   function saveSettings(field, value) {
     state.settings[field] = value;
     if (useDb) { db.doc('settings/config').set(state.settings).catch(function () {}); }
@@ -694,6 +702,47 @@
     else if (scope === 'all') { state.report.from = ''; state.report.to = ''; }
     state.report.scope = scope;
     render();
+  }
+
+  function askBulkDeleteReport() { state.confirmBulkDeleteReport = true; render(); }
+  function cancelBulkDeleteReport() { state.confirmBulkDeleteReport = false; render(); }
+
+  function deleteFilteredSales() {
+    var sales = filteredSales(state.report);
+    if (!sales.length) { state.confirmBulkDeleteReport = false; render(); return; }
+    sales.forEach(function (s) { applyStockDelta(s.items, 1); });
+
+    if (!useDb) {
+      var ids = sales.map(function (s) { return s.id; });
+      state.sales = state.sales.filter(function (s) { return ids.indexOf(s.id) === -1; });
+      state.confirmBulkDeleteReport = false;
+      render();
+      alert('Se eliminaron ' + sales.length + ' ventas del período filtrado.');
+      return;
+    }
+
+    state.bulkDeletingReport = true; render();
+    var chunks = [];
+    for (var i = 0; i < sales.length; i += 400) chunks.push(sales.slice(i, i + 400));
+    var chain = Promise.resolve();
+    chunks.forEach(function (chunk) {
+      chain = chain.then(function () {
+        var batch = db.batch();
+        chunk.forEach(function (s) { batch.delete(db.doc('sales/' + s.id)); });
+        return batch.commit();
+      });
+    });
+    chain.then(function () {
+      state.bulkDeletingReport = false;
+      state.confirmBulkDeleteReport = false;
+      render();
+      alert('Se eliminaron ' + sales.length + ' ventas del período filtrado.');
+    }).catch(function (err) {
+      console.error(err);
+      state.bulkDeletingReport = false;
+      render();
+      alert('Ocurrió un error al eliminar. Revisa tu conexión e intenta de nuevo.');
+    });
   }
 
   // ---------------- print builders ----------------
@@ -1286,7 +1335,21 @@
       '<div class="table-scroll"><table class="data-table"><thead><tr><th>Producto</th><th class="num">Cant.</th><th class="num">Total</th></tr></thead><tbody>' + prodRows + '</tbody></table></div></div>' +
 
       '<div class="card"><div class="card-title">Transacciones</div>' +
-      '<div class="table-scroll"><table class="data-table"><thead><tr><th>N°</th><th>Fecha</th><th>Vendedor(a)</th><th>Detalle</th><th>Método</th><th class="num">Total</th><th></th></tr></thead><tbody>' + txRows + '</tbody></table></div></div>';
+      '<div class="table-scroll"><table class="data-table"><thead><tr><th>N°</th><th>Fecha</th><th>Vendedor(a)</th><th>Detalle</th><th>Método</th><th class="num">Total</th><th></th></tr></thead><tbody>' + txRows + '</tbody></table></div></div>' +
+
+      '<div class="card" style="border-color:var(--danger)">' +
+      '<div class="card-title" style="color:var(--danger)">⚠️ Eliminar ventas de este período</div>' +
+      (!state.confirmBulkDeleteReport ? ('' +
+        '<div style="font-size:0.85rem;color:var(--ink-soft);margin-bottom:0.8rem">Elimina de una sola vez todas las ventas que aparecen arriba con los filtros actuales (' + sales.length + ' venta' + (sales.length === 1 ? '' : 's') + '). Si necesitas eliminar solo una venta, usa el botón ✕ en su fila.</div>' +
+        '<button class="btn btn-danger btn-sm" data-action="ask-bulk-delete-report"' + (sales.length ? '' : ' disabled') + '>🗑 Eliminar ventas filtradas</button>'
+      ) : ('' +
+        '<div style="font-size:0.9rem;color:var(--danger);font-weight:600;margin-bottom:0.8rem">¿Seguro? Se eliminarán ' + sales.length + ' venta' + (sales.length === 1 ? '' : 's') + ' del período filtrado, para siempre. No se puede deshacer.</div>' +
+        '<div class="row">' +
+        '<button class="btn btn-danger" data-action="confirm-bulk-delete-report"' + (state.bulkDeletingReport ? ' disabled' : '') + '>' + (state.bulkDeletingReport ? 'Eliminando…' : 'Sí, eliminar') + '</button>' +
+        '<button class="btn btn-ghost" data-action="cancel-bulk-delete-report"' + (state.bulkDeletingReport ? ' disabled' : '') + '>Cancelar</button>' +
+        '</div>'
+      )) +
+      '</div>';
   }
 
   function renderCierre() {
@@ -1318,8 +1381,13 @@
       var range = c.from === c.to ? c.from : c.from + ' – ' + c.to;
       return '<tr><td>' + fmtDate(c.closedAt) + '</td><td>' + (c.vendor === 'all' ? 'Todos' : esc(c.vendor)) + '</td><td>' + esc(range) + '</td>' +
         '<td class="num mono">' + money(c.expectedCash + c.expectedTransfer) + '</td>' +
-        '<td class="num mono">' + (c.difference == null ? '—' : money(c.difference)) + '</td></tr>';
-    }).join('') || '<tr><td colspan="5" class="empty-state">Sin cierres registrados.</td></tr>';
+        '<td class="num mono">' + (c.difference == null ? '—' : money(c.difference)) + '</td>' +
+        '<td style="white-space:nowrap">' +
+        (state.confirmDeleteId === c.id ?
+          '<span class="inline-confirm"><button class="btn btn-danger btn-sm" data-confirm-delclosure="' + c.id + '">Eliminar</button><button class="btn btn-sm" data-cancel-del="1">No</button></span>' :
+          '<button class="icon-btn" title="Eliminar cierre" data-ask-delclosure="' + c.id + '">🗑</button>') +
+        '</td></tr>';
+    }).join('') || '<tr><td colspan="6" class="empty-state">Sin cierres registrados.</td></tr>';
 
     return '' +
       '<div class="card">' +
@@ -1362,7 +1430,7 @@
       '</div>' +
 
       '<div class="card"><div class="card-title">Historial de cierres</div>' +
-      '<div class="table-scroll"><table class="data-table"><thead><tr><th>Fecha</th><th>Vendedor(a)</th><th>Período</th><th class="num">Total</th><th class="num">Diferencia</th></tr></thead><tbody>' + histRows + '</tbody></table></div></div>';
+      '<div class="table-scroll"><table class="data-table"><thead><tr><th>Fecha</th><th>Vendedor(a)</th><th>Período</th><th class="num">Total</th><th class="num">Diferencia</th><th></th></tr></thead><tbody>' + histRows + '</tbody></table></div></div>';
   }
 
   function renderConfig() {
@@ -1524,12 +1592,18 @@
     App.querySelectorAll('[data-confirm-delsale]').forEach(function (el) { el.addEventListener('click', function () { deleteSale(el.getAttribute('data-confirm-delsale')); render(); }); });
     App.querySelectorAll('[data-reprint]').forEach(function (el) { el.addEventListener('click', function () { reprintSale(el.getAttribute('data-reprint')); }); });
 
+    App.querySelectorAll('[data-ask-delclosure]').forEach(function (el) { el.addEventListener('click', function () { state.confirmDeleteId = el.getAttribute('data-ask-delclosure'); render(); }); });
+    App.querySelectorAll('[data-confirm-delclosure]').forEach(function (el) { el.addEventListener('click', function () { deleteClosure(el.getAttribute('data-confirm-delclosure')); render(); }); });
+
     var rv = document.getElementById('report-vendor'); if (rv) rv.addEventListener('change', function (e) { setReportFilter('vendor', e.target.value); });
     var rf = document.getElementById('report-from'); if (rf) rf.addEventListener('change', function (e) { setReportFilter('from', e.target.value); });
     var rt = document.getElementById('report-to'); if (rt) rt.addEventListener('change', function (e) { setReportFilter('to', e.target.value); });
     App.querySelectorAll('[data-quick]').forEach(function (el) { el.addEventListener('click', function () { quickRange(el.getAttribute('data-quick')); }); });
     var prBtn = App.querySelector('[data-action="print-report"]'); if (prBtn) prBtn.addEventListener('click', printReport);
     var erBtn = App.querySelector('[data-action="email-report"]'); if (erBtn) erBtn.addEventListener('click', emailReport);
+    var askBulkDelBtn = App.querySelector('[data-action="ask-bulk-delete-report"]'); if (askBulkDelBtn) askBulkDelBtn.addEventListener('click', askBulkDeleteReport);
+    var confirmBulkDelBtn = App.querySelector('[data-action="confirm-bulk-delete-report"]'); if (confirmBulkDelBtn) confirmBulkDelBtn.addEventListener('click', deleteFilteredSales);
+    var cancelBulkDelBtn = App.querySelector('[data-action="cancel-bulk-delete-report"]'); if (cancelBulkDelBtn) cancelBulkDelBtn.addEventListener('click', cancelBulkDeleteReport);
 
     var cv = document.getElementById('closure-vendor'); if (cv) cv.addEventListener('change', function (e) { setClosureFilter('vendor', e.target.value); });
     var cf = document.getElementById('closure-from'); if (cf) cf.addEventListener('change', function (e) { setClosureFilter('from', e.target.value); });
