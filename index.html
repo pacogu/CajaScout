@@ -424,7 +424,8 @@
     autoPrint: lsGet('scoutcaja_autoprint', false),
     confirmDeleteId: null,
     report: { vendor: 'all', from: todayKey(), to: todayKey(), scope: 'today' },
-    closureForm: { vendor: 'all', from: todayKey(), to: todayKey(), startingFund: '', cashCount: {} }
+    closureForm: { vendor: 'all', from: todayKey(), to: todayKey(), startingFund: '', cashCount: {} },
+    exportForm: { vendor: 'all', from: todayKey(), to: todayKey(), scope: 'today' }
   };
 
   function render() {
@@ -702,6 +703,74 @@
     else if (scope === 'all') { state.report.from = ''; state.report.to = ''; }
     state.report.scope = scope;
     render();
+  }
+
+  function setExportFilter(field, value) {
+    state.exportForm[field] = value;
+    if (field !== 'scope') state.exportForm.scope = 'custom';
+    render();
+  }
+  function quickExportRange(scope) {
+    var t = todayKey();
+    if (scope === 'today') { state.exportForm.from = t; state.exportForm.to = t; }
+    else if (scope === 'all') { state.exportForm.from = ''; state.exportForm.to = ''; }
+    state.exportForm.scope = scope;
+    render();
+  }
+
+  function csvCell(v) {
+    var s = String(v == null ? '' : v);
+    if (/[",;\n]/.test(s)) s = '"' + s.replace(/"/g, '""') + '"';
+    return s;
+  }
+
+  function exportSalesCsv() {
+    var sales = filteredSales(state.exportForm).slice().sort(function (a, b) {
+      return (a.createdAt || '').localeCompare(b.createdAt || '');
+    });
+    if (!sales.length) { alert('No hay ventas en el período seleccionado.'); return; }
+
+    var header = ['N°', 'Fecha', 'Hora', 'Vendedor(a)', 'Producto', 'Cantidad', 'Precio unitario', 'Subtotal producto', 'Total venta', 'Método de pago', 'Paga con', 'Vuelto', 'Nota'];
+    var rows = [header];
+
+    sales.forEach(function (s) {
+      var d = new Date(s.createdAt);
+      var fecha = isFinite(d.getTime()) ? d.toLocaleDateString('es-CL') : '';
+      var hora = isFinite(d.getTime()) ? d.toLocaleTimeString('es-CL') : '';
+      var items = (s.items && s.items.length) ? s.items : [{ name: '', qty: '', price: '', total: s.total }];
+      items.forEach(function (it, idx) {
+        rows.push([
+          idx === 0 ? saleLabel(s) : '',
+          idx === 0 ? fecha : '',
+          idx === 0 ? hora : '',
+          idx === 0 ? s.vendorName : '',
+          it.name,
+          it.qty,
+          it.price,
+          it.total,
+          idx === 0 ? s.total : '',
+          idx === 0 ? (s.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia') : '',
+          idx === 0 ? (s.cashReceived != null ? s.cashReceived : '') : '',
+          idx === 0 ? (s.change != null ? s.change : '') : '',
+          idx === 0 ? (s.note || '') : ''
+        ]);
+      });
+    });
+
+    var csv = rows.map(function (r) { return r.map(csvCell).join(';'); }).join('\r\n');
+    var blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+    var url = URL.createObjectURL(blob);
+    var vend = state.exportForm.vendor === 'all' ? 'todos' : state.exportForm.vendor;
+    var range = (state.exportForm.from && state.exportForm.to) ?
+      (state.exportForm.from === state.exportForm.to ? state.exportForm.from : state.exportForm.from + '_a_' + state.exportForm.to) : 'todas-las-fechas';
+    var filename = 'ventas_' + range + '_' + vend.replace(/[^a-z0-9áéíóúñ]+/gi, '-') + '.csv';
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
   }
 
   function askBulkDeleteReport() { state.confirmBulkDeleteReport = true; render(); }
@@ -1484,6 +1553,26 @@
       '</div>' +
 
       '<div class="card">' +
+      '<div class="card-title">Exportar ventas a Excel</div>' +
+      '<div class="row">' +
+      '<div class="field"><label>Vendedor(a)</label><select id="export-vendor">' +
+      '<option value="all"' + (state.exportForm.vendor === 'all' ? ' selected' : '') + '>Todos</option>' +
+      vendorList().map(function (v) { return '<option value="' + esc(v) + '"' + (state.exportForm.vendor === v ? ' selected' : '') + '>' + esc(v) + '</option>'; }).join('') +
+      '</select></div>' +
+      '<div class="field"><label>Desde</label><input type="date" id="export-from" value="' + state.exportForm.from + '"></div>' +
+      '<div class="field"><label>Hasta</label><input type="date" id="export-to" value="' + state.exportForm.to + '"></div>' +
+      '<div class="field"><label>Atajos</label><div class="pill-group">' +
+      '<button type="button" class="pill' + (state.exportForm.scope === 'today' ? ' active' : '') + '" data-export-quick="today">Hoy</button>' +
+      '<button type="button" class="pill' + (state.exportForm.scope === 'all' ? ' active' : '') + '" data-export-quick="all">Todo</button>' +
+      '</div></div>' +
+      '</div>' +
+      '<div style="margin-top:0.8rem">' +
+      '<button class="btn btn-primary" data-action="export-csv">📥 Descargar Excel (CSV)</button>' +
+      '</div>' +
+      '<div style="font-size:0.78rem;color:var(--ink-faint);margin-top:0.6rem">Descarga un archivo .csv (se abre directo en Excel o Google Sheets) con el detalle de cada transacción del período y vendedor(a) elegidos.</div>' +
+      '</div>' +
+
+      '<div class="card">' +
       '<div class="card-title">Guardar y app</div>' +
       '<div class="row" style="align-items:center">' +
       '<button class="btn btn-primary" data-action="save-config">💾 Guardar cambios</button>' +
@@ -1616,6 +1705,11 @@
     var saveClosureBtn = App.querySelector('[data-action="save-closure"]'); if (saveClosureBtn) saveClosureBtn.addEventListener('click', saveClosure);
     var printClosureBtn = App.querySelector('[data-action="print-closure"]'); if (printClosureBtn) printClosureBtn.addEventListener('click', printClosure);
     var ecBtn = App.querySelector('[data-action="email-closure"]'); if (ecBtn) ecBtn.addEventListener('click', emailClosure);
+    var ev = document.getElementById('export-vendor'); if (ev) ev.addEventListener('change', function (e) { setExportFilter('vendor', e.target.value); });
+    var ef = document.getElementById('export-from'); if (ef) ef.addEventListener('change', function (e) { setExportFilter('from', e.target.value); });
+    var et = document.getElementById('export-to'); if (et) et.addEventListener('change', function (e) { setExportFilter('to', e.target.value); });
+    App.querySelectorAll('[data-export-quick]').forEach(function (el) { el.addEventListener('click', function () { quickExportRange(el.getAttribute('data-export-quick')); }); });
+    var exportCsvBtn = App.querySelector('[data-action="export-csv"]'); if (exportCsvBtn) exportCsvBtn.addEventListener('click', exportSalesCsv);
     var saveConfigBtn = App.querySelector('[data-action="save-config"]'); if (saveConfigBtn) saveConfigBtn.addEventListener('click', saveAllSettings);
     var installBtn = App.querySelector('[data-action="install-app"]'); if (installBtn) installBtn.addEventListener('click', installApp);
     var askDeleteAllBtn = App.querySelector('[data-action="ask-delete-all"]'); if (askDeleteAllBtn) askDeleteAllBtn.addEventListener('click', askDeleteAll);
