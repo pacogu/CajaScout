@@ -390,6 +390,54 @@
     return CASH_DENOMS.reduce(function (sum, d) { return sum + (parseInt(cc[d], 10) || 0); }, 0);
   }
 
+  // ---------------- clima (Open-Meteo, gratis, sin llave) ----------------
+  var WEATHER_LABELS = {
+    0: 'Despejado', 1: 'Mayormente despejado', 2: 'Parcialmente nublado', 3: 'Nublado',
+    45: 'Neblina', 48: 'Neblina', 51: 'Llovizna débil', 53: 'Llovizna', 55: 'Llovizna intensa',
+    56: 'Llovizna helada', 57: 'Llovizna helada intensa',
+    61: 'Lluvia débil', 63: 'Lluvia', 65: 'Lluvia intensa',
+    66: 'Lluvia helada', 67: 'Lluvia helada intensa',
+    71: 'Nieve débil', 73: 'Nieve', 75: 'Nieve intensa', 77: 'Granizo pequeño',
+    80: 'Chubascos débiles', 81: 'Chubascos', 82: 'Chubascos intensos',
+    85: 'Chubascos de nieve', 86: 'Chubascos de nieve intensos',
+    95: 'Tormenta eléctrica', 96: 'Tormenta con granizo', 99: 'Tormenta con granizo intenso'
+  };
+  function weatherLabel(code) { return WEATHER_LABELS[code] || 'Sin datos'; }
+  function weatherEmoji(code) {
+    if (code === 0 || code === 1) return '☀️';
+    if (code === 2 || code === 3) return '⛅';
+    if (code === 45 || code === 48) return '🌫️';
+    if (code >= 51 && code <= 67) return '🌦️';
+    if (code >= 71 && code <= 86) return '❄️';
+    if (code >= 95) return '⛈️';
+    return '🌡️';
+  }
+  function geocodeLocation(name) {
+    var url = 'https://geocoding-api.open-meteo.com/v1/search?name=' + encodeURIComponent(name) + '&count=1&language=es&format=json';
+    return fetch(url).then(function (r) { return r.json(); }).then(function (d) {
+      if (d && d.results && d.results.length) {
+        var r0 = d.results[0];
+        return { lat: r0.latitude, lon: r0.longitude, label: [r0.name, r0.admin1, r0.country].filter(Boolean).join(', ') };
+      }
+      return null;
+    });
+  }
+  function fetchWeatherForDate(lat, lon, dateStr) {
+    var isPast = dateStr < todayKey();
+    var base = isPast ? 'https://archive-api.open-meteo.com/v1/archive' : 'https://api.open-meteo.com/v1/forecast';
+    var url = base + '?latitude=' + lat + '&longitude=' + lon + '&start_date=' + dateStr + '&end_date=' + dateStr +
+      '&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weathercode&timezone=auto';
+    return fetch(url).then(function (r) { return r.json(); }).then(function (d) {
+      if (!d || !d.daily || !d.daily.time || !d.daily.time.length) return null;
+      return {
+        tempMax: d.daily.temperature_2m_max[0],
+        tempMin: d.daily.temperature_2m_min[0],
+        precipitation: d.daily.precipitation_sum[0],
+        weathercode: d.daily.weathercode[0]
+      };
+    });
+  }
+
   var state = {
     products: seedProducts.slice(),
     sales: [],
@@ -423,9 +471,15 @@
     paperWidth: lsGet('scoutcaja_paper', '80'),
     autoPrint: lsGet('scoutcaja_autoprint', false),
     confirmDeleteId: null,
-    report: { vendor: 'all', from: todayKey(), to: todayKey(), scope: 'today' },
-    closureForm: { vendor: 'all', from: todayKey(), to: todayKey(), startingFund: '', cashCount: {} },
-    exportForm: { vendor: 'all', from: todayKey(), to: todayKey(), scope: 'today' }
+    report: { vendor: 'all', event: 'all', from: todayKey(), to: todayKey(), scope: 'today' },
+    closureForm: { vendor: 'all', event: 'all', from: todayKey(), to: todayKey(), startingFund: '', cashCount: {} },
+    exportForm: { vendor: 'all', event: 'all', from: todayKey(), to: todayKey(), scope: 'today' },
+    events: [],
+    activeEventId: lsGet('scoutcaja_active_event', null),
+    eventForm: { name: '', date: todayKey(), location: lsGet('scoutcaja_event_location', '') },
+    eventSaving: false,
+    eventError: '',
+    confirmDeleteEventId: null
   };
 
   function render() {
@@ -495,6 +549,11 @@
         render();
       }, function (err) { console.error(err); render(); });
 
+      db.collection('events').orderBy('date', 'desc').limit(200).onSnapshot(function (qs) {
+        state.events = qs.docs.map(function (d) { return Object.assign({ id: d.id }, d.data()); });
+        render();
+      }, function (err) { console.error(err); render(); });
+
       render();
     } catch (e) {
       console.error(e);
@@ -503,7 +562,7 @@
   }
 
   // ---------------- actions ----------------
-  function setTab(t) { state.tab = t; state.confirmDeleteId = null; lsSet('scoutcaja_tab', t); render(); }
+  function setTab(t) { state.tab = t; state.confirmDeleteId = null; state.confirmDeleteEventId = null; lsSet('scoutcaja_tab', t); render(); }
 
   function addQty(pid, delta) {
     var p = state.products.find(function (x) { return x.id === pid; });
@@ -565,6 +624,8 @@
     var cashReceived = state.payMethod === 'efectivo' && state.cashReceived !== '' ? (parseInt(state.cashReceived, 10) || 0) : null;
     var change = cashReceived != null ? (cashReceived - total) : null;
 
+    var activeEvent = state.activeEventId ? state.events.find(function (e) { return e.id === state.activeEventId; }) : null;
+
     nextSaleNumber(function (saleNumber) {
       var sale = {
         saleNumber: saleNumber || null,
@@ -576,7 +637,9 @@
         change: change,
         note: (state.note || '').trim(),
         createdAt: now.toISOString(),
-        dateKey: now.toLocaleDateString('en-CA')
+        dateKey: now.toLocaleDateString('en-CA'),
+        eventId: activeEvent ? activeEvent.id : null,
+        eventName: activeEvent ? activeEvent.name : null
       };
 
       function afterSaved(id) {
@@ -629,6 +692,87 @@
     state.confirmDeleteId = null;
   }
 
+  // ---------------- eventos ----------------
+  function setEventFormField(field, value) {
+    state.eventForm[field] = value;
+    if (field === 'location') lsSet('scoutcaja_event_location', value);
+    render();
+  }
+
+  function createEvent() {
+    var name = (state.eventForm.name || '').trim();
+    var date = state.eventForm.date || todayKey();
+    var location = (state.eventForm.location || '').trim();
+    if (!name) { state.eventError = 'Escribe un nombre para el evento.'; render(); return; }
+    state.eventError = '';
+    state.eventSaving = true;
+    render();
+
+    function saveEvent(weatherInfo, geoLabel) {
+      var rec = {
+        name: name,
+        date: date,
+        location: location,
+        geoLabel: geoLabel || null,
+        weather: weatherInfo || null,
+        createdAt: Date.now()
+      };
+      if (useDb) {
+        db.collection('events').add(rec).then(function (ref) {
+          state.eventSaving = false;
+          state.activeEventId = ref.id;
+          lsSet('scoutcaja_active_event', ref.id);
+          state.eventForm.name = '';
+          render();
+        }).catch(function () {
+          state.eventSaving = false;
+          state.eventError = 'No se pudo guardar el evento. Intenta de nuevo.';
+          render();
+        });
+      } else {
+        var id = 'local-' + uid();
+        state.events.unshift(Object.assign({ id: id }, rec));
+        state.eventSaving = false;
+        state.activeEventId = id;
+        lsSet('scoutcaja_active_event', id);
+        state.eventForm.name = '';
+        render();
+      }
+    }
+
+    if (!location) { saveEvent(null, null); return; }
+
+    geocodeLocation(location).then(function (geo) {
+      if (!geo) { saveEvent(null, null); return; }
+      return fetchWeatherForDate(geo.lat, geo.lon, date).then(function (weatherInfo) {
+        saveEvent(weatherInfo, geo.label);
+      });
+    }).catch(function (err) {
+      console.error(err);
+      saveEvent(null, null);
+    });
+  }
+
+  function setActiveEvent(id) { state.activeEventId = id || null; lsSet('scoutcaja_active_event', state.activeEventId); render(); }
+  function askDeleteEvent(id) { state.confirmDeleteEventId = id; render(); }
+  function cancelDeleteEvent() { state.confirmDeleteEventId = null; render(); }
+  function deleteEvent(id) {
+    if (useDb) { db.doc('events/' + id).delete(); }
+    else { state.events = state.events.filter(function (e) { return e.id !== id; }); render(); }
+    if (state.activeEventId === id) setActiveEvent(null);
+    state.confirmDeleteEventId = null;
+  }
+
+  function eventStats(eventId) {
+    var sales = state.sales.filter(function (s) { return s.eventId === eventId; });
+    var st = reportStats(sales);
+    var topName = null, topQty = 0;
+    Object.keys(st.byProduct).forEach(function (name) {
+      if (st.byProduct[name].qty > topQty) { topQty = st.byProduct[name].qty; topName = name; }
+    });
+    return { count: st.count, units: st.units, total: st.total, topName: topName, topQty: topQty };
+  }
+
   function saveSettings(field, value) {
     state.settings[field] = value;
     if (useDb) { db.doc('settings/config').set(state.settings).catch(function () {}); }
@@ -671,11 +815,22 @@
   function filteredSales(f) {
     return state.sales.filter(function (s) {
       if (f.vendor !== 'all' && s.vendorName !== f.vendor) return false;
+      if (f.event && f.event !== 'all') {
+        if (f.event === 'none') { if (s.eventId) return false; }
+        else if (s.eventId !== f.event) return false;
+      }
       var dk = s.dateKey || dateKey(s.createdAt);
       if (f.from && dk < f.from) return false;
       if (f.to && dk > f.to) return false;
       return true;
     });
+  }
+  function eventOptionsHtml(selected) {
+    return '<option value="all"' + (selected === 'all' ? ' selected' : '') + '>Todos los eventos</option>' +
+      '<option value="none"' + (selected === 'none' ? ' selected' : '') + '>Sin evento</option>' +
+      state.events.map(function (ev) {
+        return '<option value="' + ev.id + '"' + (selected === ev.id ? ' selected' : '') + '>' + esc(ev.name) + ' (' + ev.date + ')</option>';
+      }).join('');
   }
   function reportStats(sales) {
     var total = 0, units = 0, byProduct = {}, byMethod = { efectivo: 0, transferencia: 0 };
@@ -730,7 +885,7 @@
     });
     if (!sales.length) { alert('No hay ventas en el período seleccionado.'); return; }
 
-    var header = ['N°', 'Fecha', 'Hora', 'Vendedor(a)', 'Producto', 'Cantidad', 'Precio unitario', 'Subtotal producto', 'Total venta', 'Método de pago', 'Paga con', 'Vuelto', 'Nota'];
+    var header = ['N°', 'Fecha', 'Hora', 'Evento', 'Vendedor(a)', 'Producto', 'Cantidad', 'Precio unitario', 'Subtotal producto', 'Total venta', 'Método de pago', 'Paga con', 'Vuelto', 'Nota'];
     var rows = [header];
 
     sales.forEach(function (s) {
@@ -743,6 +898,7 @@
           idx === 0 ? saleLabel(s) : '',
           idx === 0 ? fecha : '',
           idx === 0 ? hora : '',
+          idx === 0 ? (s.eventName || '') : '',
           idx === 0 ? s.vendorName : '',
           it.name,
           it.qty,
@@ -1215,6 +1371,7 @@
 
   function renderHeader() {
     var s = state.settings;
+    var activeEvent = state.activeEventId ? state.events.find(function (e) { return e.id === state.activeEventId; }) : null;
     return '' +
       '<header class="app-header">' +
       '<div class="brand-group">' +
@@ -1227,12 +1384,13 @@
       '<div class="sync-status">' +
       '<span class="dot ' + (useDb ? 'on' : 'off') + '"></span>' +
       (useDb ? 'Sincronizado con tu tropa' : 'Modo local (este dispositivo)') +
+      (activeEvent ? ('<br>📌 Evento: ' + esc(activeEvent.name)) : '') +
       '</div>' +
       '</header>';
   }
 
   function renderTabs() {
-    var tabs = [['vender', 'Vender'], ['productos', 'Productos'], ['reportes', 'Reportes'], ['cierre', 'Cierre de Caja'], ['config', 'Configuración']];
+    var tabs = [['vender', 'Vender'], ['productos', 'Productos'], ['eventos', 'Eventos'], ['reportes', 'Reportes'], ['cierre', 'Cierre de Caja'], ['config', 'Configuración']];
     return '<nav class="tabbar">' + tabs.map(function (t) {
       return '<button class="tab-btn' + (state.tab === t[0] ? ' active' : '') + '" data-tab="' + t[0] + '">' + t[1] + '</button>';
     }).join('') + '</nav>';
@@ -1355,6 +1513,70 @@
       '</div>';
   }
 
+  function renderEventos() {
+    var activeEvent = state.activeEventId ? state.events.find(function (e) { return e.id === state.activeEventId; }) : null;
+
+    function weatherLine(w) {
+      if (!w) return '<span style="color:var(--ink-faint)">Sin datos de clima</span>';
+      return weatherEmoji(w.weathercode) + ' ' + weatherLabel(w.weathercode) + ' · ' + Math.round(w.tempMin) + '°–' + Math.round(w.tempMax) + '°C' + (w.precipitation > 0 ? ' · 🌧 ' + w.precipitation + ' mm' : '');
+    }
+
+    var activeCard = '' +
+      '<div class="card">' +
+      '<div class="card-title">Evento activo</div>' +
+      (activeEvent ? ('' +
+        '<div style="font-size:1.1rem;font-weight:700">' + esc(activeEvent.name) + '</div>' +
+        '<div style="color:var(--ink-soft);font-size:0.85rem;margin:0.2rem 0 0.5rem">' + activeEvent.date + (activeEvent.geoLabel ? ' · ' + esc(activeEvent.geoLabel) : (activeEvent.location ? ' · ' + esc(activeEvent.location) : '')) + '</div>' +
+        '<div style="margin-bottom:0.8rem">' + weatherLine(activeEvent.weather) + '</div>' +
+        '<button class="btn btn-ghost btn-sm" data-action="clear-active-event">Quitar evento activo</button>'
+      ) : ('' +
+        '<div style="font-size:0.85rem;color:var(--ink-soft)">No hay ningún evento activo — las ventas nuevas quedarán sin evento asignado. Crea uno abajo o actívalo desde la lista.</div>'
+      )) +
+      '</div>';
+
+    var createCard = '' +
+      '<div class="card">' +
+      '<div class="card-title">Crear nuevo evento<span class="hint">El catálogo de productos ya está listo — no hay que precargar nada</span></div>' +
+      '<div class="row">' +
+      '<div class="field"><label>Nombre del evento</label><input type="text" id="event-name" placeholder="Ej: Fiesta de la Chilenidad — tarde" value="' + esc(state.eventForm.name) + '"></div>' +
+      '<div class="field" style="max-width:170px"><label>Fecha</label><input type="date" id="event-date" value="' + state.eventForm.date + '"></div>' +
+      '<div class="field"><label>Ubicación (para el clima)</label><input type="text" id="event-location" placeholder="Ej: Santiago, Chile" value="' + esc(state.eventForm.location) + '"></div>' +
+      '</div>' +
+      '<div style="margin-top:0.8rem">' +
+      '<button class="btn btn-primary" data-action="create-event"' + (state.eventSaving ? ' disabled' : '') + '>' + (state.eventSaving ? 'Creando y buscando clima…' : '+ Crear y activar evento') + '</button>' +
+      '</div>' +
+      (state.eventError ? '<div class="form-error">' + esc(state.eventError) + '</div>' : '') +
+      '<div style="font-size:0.78rem;color:var(--ink-faint);margin-top:0.6rem">Al crear el evento se busca automáticamente el clima de ese día y lugar (servicio gratuito Open-Meteo). Si no escribes ubicación, se guarda sin clima.</div>' +
+      '</div>';
+
+    var rows = state.events.map(function (ev) {
+      var st = eventStats(ev.id);
+      var isActive = state.activeEventId === ev.id;
+      return '<tr' + (isActive ? ' style="background:var(--moss-tint)"' : '') + '>' +
+        '<td>' + esc(ev.name) + (isActive ? ' <span class="badge cash">activo</span>' : '') + '</td>' +
+        '<td>' + ev.date + '</td>' +
+        '<td>' + weatherLine(ev.weather) + '</td>' +
+        '<td class="num">' + st.count + '</td>' +
+        '<td class="num">' + st.units + '</td>' +
+        '<td class="num mono">' + money(st.total) + '</td>' +
+        '<td>' + (st.topName ? esc(st.topName) + ' (' + st.topQty + ')' : '—') + '</td>' +
+        '<td style="white-space:nowrap">' +
+        (isActive ? '' : '<button class="btn btn-ghost btn-sm" data-set-active-event="' + ev.id + '">Activar</button> ') +
+        (state.confirmDeleteEventId === ev.id ?
+          '<span class="inline-confirm"><button class="btn btn-danger btn-sm" data-confirm-delevent="' + ev.id + '">Sí</button><button class="btn btn-sm" data-cancel-delevent="1">No</button></span>' :
+          '<button class="icon-btn" title="Eliminar evento" data-ask-delevent="' + ev.id + '">🗑</button>') +
+        '</td></tr>';
+    }).join('') || '<tr><td colspan="8" class="empty-state">Aún no has creado eventos.</td></tr>';
+
+    var compareCard = '' +
+      '<div class="card"><div class="card-title">Comparar eventos<span class="hint">Ventas, producto más vendido y clima de cada evento</span></div>' +
+      '<div class="table-scroll"><table class="data-table"><thead><tr><th>Evento</th><th>Fecha</th><th>Clima</th><th class="num">Ventas</th><th class="num">Unidades</th><th class="num">Total</th><th>Más vendido</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
+      '<div style="font-size:0.78rem;color:var(--ink-faint);margin-top:0.7rem">Con esta tabla puedes ir viendo, evento a evento, qué productos conviene llevar más y si el clima influye en las ventas o en qué se vende más (por ejemplo, más bebidas en días calurosos).</div>' +
+      '</div>';
+
+    return activeCard + createCard + compareCard;
+  }
+
   function renderReportes() {
     var f = state.report;
     var sales = filteredSales(f);
@@ -1385,6 +1607,7 @@
       '<option value="all"' + (f.vendor === 'all' ? ' selected' : '') + '>Todos</option>' +
       vendors.map(function (v) { return '<option value="' + esc(v) + '"' + (f.vendor === v ? ' selected' : '') + '>' + esc(v) + '</option>'; }).join('') +
       '</select></div>' +
+      '<div class="field"><label>Evento</label><select id="report-event">' + eventOptionsHtml(f.event || 'all') + '</select></div>' +
       '<div class="field"><label>Desde</label><input type="date" id="report-from" value="' + f.from + '"></div>' +
       '<div class="field"><label>Hasta</label><input type="date" id="report-to" value="' + f.to + '"></div>' +
       '<div class="field"><label>Atajos</label><div class="pill-group">' +
@@ -1466,6 +1689,7 @@
       '<option value="all"' + (f.vendor === 'all' ? ' selected' : '') + '>Todos</option>' +
       vendors.map(function (v) { return '<option value="' + esc(v) + '"' + (f.vendor === v ? ' selected' : '') + '>' + esc(v) + '</option>'; }).join('') +
       '</select></div>' +
+      '<div class="field"><label>Evento</label><select id="closure-event">' + eventOptionsHtml(f.event || 'all') + '</select></div>' +
       '<div class="field"><label>Desde</label><input type="date" id="closure-from" value="' + f.from + '"></div>' +
       '<div class="field"><label>Hasta</label><input type="date" id="closure-to" value="' + f.to + '"></div>' +
       '<div class="field"><label>Fondo de inicio</label>' +
@@ -1559,6 +1783,7 @@
       '<option value="all"' + (state.exportForm.vendor === 'all' ? ' selected' : '') + '>Todos</option>' +
       vendorList().map(function (v) { return '<option value="' + esc(v) + '"' + (state.exportForm.vendor === v ? ' selected' : '') + '>' + esc(v) + '</option>'; }).join('') +
       '</select></div>' +
+      '<div class="field"><label>Evento</label><select id="export-event">' + eventOptionsHtml(state.exportForm.event || 'all') + '</select></div>' +
       '<div class="field"><label>Desde</label><input type="date" id="export-from" value="' + state.exportForm.from + '"></div>' +
       '<div class="field"><label>Hasta</label><input type="date" id="export-to" value="' + state.exportForm.to + '"></div>' +
       '<div class="field"><label>Atajos</label><div class="pill-group">' +
@@ -1606,6 +1831,7 @@
     var body;
     if (state.tab === 'vender') body = renderVender();
     else if (state.tab === 'productos') body = renderProductos();
+    else if (state.tab === 'eventos') body = renderEventos();
     else if (state.tab === 'reportes') body = renderReportes();
     else if (state.tab === 'cierre') body = renderCierre();
     else body = renderConfig();
@@ -1684,6 +1910,17 @@
     App.querySelectorAll('[data-ask-delclosure]').forEach(function (el) { el.addEventListener('click', function () { state.confirmDeleteId = el.getAttribute('data-ask-delclosure'); render(); }); });
     App.querySelectorAll('[data-confirm-delclosure]').forEach(function (el) { el.addEventListener('click', function () { deleteClosure(el.getAttribute('data-confirm-delclosure')); render(); }); });
 
+    var evName = document.getElementById('event-name'); if (evName) evName.addEventListener('input', function (e) { setEventFormField('name', e.target.value); });
+    var evDate = document.getElementById('event-date'); if (evDate) evDate.addEventListener('change', function (e) { setEventFormField('date', e.target.value); });
+    var evLoc = document.getElementById('event-location'); if (evLoc) evLoc.addEventListener('input', function (e) { setEventFormField('location', e.target.value); });
+    var createEventBtn = App.querySelector('[data-action="create-event"]'); if (createEventBtn) createEventBtn.addEventListener('click', createEvent);
+    var clearActiveEventBtn = App.querySelector('[data-action="clear-active-event"]'); if (clearActiveEventBtn) clearActiveEventBtn.addEventListener('click', function () { setActiveEvent(null); });
+    App.querySelectorAll('[data-set-active-event]').forEach(function (el) { el.addEventListener('click', function () { setActiveEvent(el.getAttribute('data-set-active-event')); }); });
+    App.querySelectorAll('[data-ask-delevent]').forEach(function (el) { el.addEventListener('click', function () { askDeleteEvent(el.getAttribute('data-ask-delevent')); }); });
+    App.querySelectorAll('[data-confirm-delevent]').forEach(function (el) { el.addEventListener('click', function () { deleteEvent(el.getAttribute('data-confirm-delevent')); render(); }); });
+    App.querySelectorAll('[data-cancel-delevent]').forEach(function (el) { el.addEventListener('click', cancelDeleteEvent); });
+
+    var reev = document.getElementById('report-event'); if (reev) reev.addEventListener('change', function (e) { setReportFilter('event', e.target.value); });
     var rv = document.getElementById('report-vendor'); if (rv) rv.addEventListener('change', function (e) { setReportFilter('vendor', e.target.value); });
     var rf = document.getElementById('report-from'); if (rf) rf.addEventListener('change', function (e) { setReportFilter('from', e.target.value); });
     var rt = document.getElementById('report-to'); if (rt) rt.addEventListener('change', function (e) { setReportFilter('to', e.target.value); });
@@ -1694,6 +1931,7 @@
     var confirmBulkDelBtn = App.querySelector('[data-action="confirm-bulk-delete-report"]'); if (confirmBulkDelBtn) confirmBulkDelBtn.addEventListener('click', deleteFilteredSales);
     var cancelBulkDelBtn = App.querySelector('[data-action="cancel-bulk-delete-report"]'); if (cancelBulkDelBtn) cancelBulkDelBtn.addEventListener('click', cancelBulkDeleteReport);
 
+    var clev = document.getElementById('closure-event'); if (clev) clev.addEventListener('change', function (e) { setClosureFilter('event', e.target.value); });
     var cv = document.getElementById('closure-vendor'); if (cv) cv.addEventListener('change', function (e) { setClosureFilter('vendor', e.target.value); });
     var cf = document.getElementById('closure-from'); if (cf) cf.addEventListener('change', function (e) { setClosureFilter('from', e.target.value); });
     var ct = document.getElementById('closure-to'); if (ct) ct.addEventListener('change', function (e) { setClosureFilter('to', e.target.value); });
@@ -1705,6 +1943,7 @@
     var saveClosureBtn = App.querySelector('[data-action="save-closure"]'); if (saveClosureBtn) saveClosureBtn.addEventListener('click', saveClosure);
     var printClosureBtn = App.querySelector('[data-action="print-closure"]'); if (printClosureBtn) printClosureBtn.addEventListener('click', printClosure);
     var ecBtn = App.querySelector('[data-action="email-closure"]'); if (ecBtn) ecBtn.addEventListener('click', emailClosure);
+    var evev = document.getElementById('export-event'); if (evev) evev.addEventListener('change', function (e) { setExportFilter('event', e.target.value); });
     var ev = document.getElementById('export-vendor'); if (ev) ev.addEventListener('change', function (e) { setExportFilter('vendor', e.target.value); });
     var ef = document.getElementById('export-from'); if (ef) ef.addEventListener('change', function (e) { setExportFilter('from', e.target.value); });
     var et = document.getElementById('export-to'); if (et) et.addEventListener('change', function (e) { setExportFilter('to', e.target.value); });
